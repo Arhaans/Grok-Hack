@@ -7,8 +7,8 @@
         "voice": "gpt-oss:20b (recorded)"
       },
       "accept": {
-        "text": "I accept the $64 price for The Botanical Barrier Repair Serum (50ml) and am proceeding to checkout.",
-        "voice": "gpt-oss:20b (recorded)"
+        "text": "Great, I'll take the serum and cleanser bundle for $84 and proceed to checkout.",
+        "voice": "scripted"
       }
     },
     "claude-3.5-sonnet": {

@@ -14,11 +14,14 @@ export type AgentIdentity = {
   impersonation?: boolean       // unsigned claim contradicted by the model fingerprint
   modelGuess?: ModelGuess       // from LLMmap, experimental
   scores: { trust: number; lead: number; risk: number }  // 0–100 each
+  context?: AgentContext        // what this agent is shopping for (from its search), drives its experience
   experience: Experience        // what Prism serves this agent right now
   firstSeen: number
   lastSeen: number
   requests: number
 }
+
+export type AgentContext = { query: string; budget?: number; needs: string[] }
 
 // trust > 90 && lead > 80 → private signed offer; risk > 70 → private routes withheld (catalog still marked)
 export type Experience = "private-offer" | "negotiated" | "public" | "withheld"
@@ -106,6 +109,8 @@ export type SignedOffer = {
 export type BuyingPacket = {
   format: "packet"
   merchant: string
+  context?: AgentContext
+  recommended?: { sku: string; why: string }[]
   items: {
     sku: string
     name: string

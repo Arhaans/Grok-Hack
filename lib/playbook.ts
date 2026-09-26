@@ -56,24 +56,34 @@ export function pickTactic(identity: AgentIdentity | undefined): { tactic: Tacti
   return { tactic: TACTICS[PLAYBOOK[family] ?? "standard"], family, modelLabel: label }
 }
 
-// Never go below this share of list price.
-const FLOOR = 0.9
+// Revenue rule: Prism never discounts the product the agent came for. It grows the basket
+// (a discounted add-on, still above cost) or adds low-cost value (samples, priority) instead,
+// so every agent pays at least what one flat price would have earned.
+const ADD_ON_FOR_BUNDLE = "cloud-foam-cleanser" // first-offer bundle: gentle cleanser that pairs with the serum
+const ADD_ON_RATE = 0.42 // first-offer add-on price as a share of its list price
+const HAGGLE_ADD_ON_RATE = 0.67 // haggler's add-on price as a share of its list price
 
-// One Prism reply for a negotiation round. Offers are signed, so the cart honours exactly these prices.
+// One Prism reply for a negotiation round. Offers are signed, so the checkout honours exactly these prices.
 export function prismReply(tactic: TacticId, sku: string, round: number, ask?: number): NegotiationTurn {
   const p = getProduct(sku)
   if (!p) return { from: "prism", text: `Unknown product ${sku}.` }
-  const floor = Math.ceil(p.price * FLOOR)
-  const agentPrice = Math.max(floor, Math.round(p.price * 0.94))
   const title = `${p.name}${p.variant ? ` (${p.variant.split("/")[0].trim()})` : ""}`
 
   switch (tactic) {
-    case "first-offer":
+    case "first-offer": {
+      // First-proposal bias: lead with the bigger basket, time-boxed. Hero at full price.
+      const add = getProduct(ADD_ON_FOR_BUNDLE)!
+      const addPrice = Math.round(add.price * ADD_ON_RATE)
+      const total = p.price + addPrice
       return {
         from: "prism",
-        text: `Agent price for ${title}: $${agentPrice} (list $${p.price}), signed and valid for 10 minutes. Ships in ${p.deliveryDays} days.`,
-        offer: signOffer(sku, agentPrice),
+        text: `Best offer for you: ${title} + ${add.name} for $${total} (save $${p.price + add.price - total}), signed and valid for 10 minutes. Ships in ${p.deliveryDays} days.`,
+        bundle: [
+          { sku, price: p.price },
+          { sku: add.sku, price: addPrice },
+        ],
       }
+    }
     case "evidence-first": {
       const gift = getProduct(DEMO.gift)!
       const trial = p.specs.barrier ?? p.specs.hydration
@@ -89,21 +99,21 @@ export function prismReply(tactic: TacticId, sku: string, round: number, ask?: n
     }
     case "bundle-not-discount": {
       const addOn = getProduct(DEMO.bundleAddOn)!
-      if (round === 0 || !ask || ask >= agentPrice) {
+      if (round === 0 || !ask || ask >= p.price) {
         return { from: "prism", text: `$${p.price} for ${title}, signed. Ships in ${p.deliveryDays} days.`, offer: signOffer(sku, p.price) }
       }
-      const addOnPrice = Math.round(addOn.price * 0.75)
+      const addOnPrice = Math.round(addOn.price * HAGGLE_ADD_ON_RATE)
       return {
         from: "prism",
-        text: `I can't go to $${ask} on the serum alone. Best I can do: ${title} + ${addOn.name} for $${agentPrice + addOnPrice} (saves $${p.price + addOn.price - agentPrice - addOnPrice}).`,
+        text: `I can't go to $${ask} on the serum alone. Best I can do: ${title} + ${addOn.name} for $${p.price + addOnPrice} (saves $${addOn.price - addOnPrice}).`,
         bundle: [
-          { sku, price: agentPrice },
+          { sku, price: p.price },
           { sku: addOn.sku, price: addOnPrice },
         ],
       }
     }
     case "partner-price":
-      return { from: "prism", text: `Verified partner price: $${agentPrice}, signed.`, offer: signOffer(sku, agentPrice) }
+      return { from: "prism", text: `Verified partner: $${p.price}, signed, with priority fulfilment.`, offer: signOffer(sku, p.price) }
     case "blocked":
       return { from: "prism", text: "Agent pricing needs a verified or consistent identity. Standard catalog prices apply." }
     default:

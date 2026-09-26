@@ -143,7 +143,7 @@ export function computeIdentity(t: SessionTrace): AgentIdentity {
       : intent === "research" ? 40 : intent === "harvest" ? 3 : 20
   const risk = Math.min(
     100,
-    (intent === "harvest" ? 55 + Math.round(15 * coverage) : 5) + (impersonating ? 25 : 0) + (t.copiedTo ? 25 : 0) + (!verified && !consistent ? 10 : 0),
+    (intent === "harvest" ? 55 + Math.round(15 * coverage) : 5) + (impersonating ? 70 : 0) + (t.copiedTo ? 25 : 0) + (!verified && !consistent ? 10 : 0),
   )
   const experience: AgentIdentity["experience"] =
     risk > 70 ? "withheld" : trust > 90 && lead > 80 ? "private-offer" : consistent && intent === "buy" ? "negotiated" : "public"
@@ -160,6 +160,7 @@ export function computeIdentity(t: SessionTrace): AgentIdentity {
     impersonation: impersonating,
     modelGuess,
     scores: { trust, lead, risk },
+    context: t.context,
     experience,
     firstSeen: t.firstSeen,
     lastSeen: t.lastSeen,

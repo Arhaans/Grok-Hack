@@ -3,6 +3,7 @@ import { buildFull, buildMatrix, buildPacket } from "@/lib/formats"
 import { logEvent, store } from "@/lib/events"
 import { annotate, observe } from "@/lib/identify"
 import { json } from "@/lib/http"
+import { contextFrom } from "@/lib/context"
 
 // GET /api/agent/catalog?format=packet|matrix|full&task=buy|research&skus=A,B&family=barrier-repair-serum
 // Without an explicit format, Prism picks one from the agent's task hint or its observed intent.
@@ -17,15 +18,26 @@ export async function GET(req: Request) {
   if (!format && task === "buy") format = "packet"
   if (!format && task === "research") format = "matrix"
 
-  let { sessionId, identity, trace } = observe(req, { path: "/api/agent/catalog", skus: products.map((p) => p.sku) })
+  let { sessionId, identity, trace } = observe(req, { path: "/api/agent/catalog" })
 
-  // Stop at the door: once an agent is withheld (impostor / scraper), refuse further catalog pulls.
+  // Stop at the door: a withheld agent (exposed impostor or bulk scraper) gets nothing, not even the first page.
   const st = store()
-  if (identity.experience === "withheld" && trace.formats.has("full")) {
+  if (identity.experience === "withheld") {
     const n = (st.blocked.get(sessionId) ?? 0) + 1
     st.blocked.set(sessionId, n)
     logEvent(sessionId, "request", `Blocked ${identity.claimed ?? "agent"}: catalog request #${n} refused (risk ${identity.scores.risk})`, { blocked: n })
     return json({ error: "blocked by Prism: withheld agent", retry: false }, { status: 429, headers: { "x-prism-session": sessionId } })
+  }
+  // Through the gate: now these products count as seen by this agent.
+  products.forEach((p) => trace.skusSeen.add(p.sku))
+  identity = annotate(sessionId, {}) ?? identity
+
+  // The agent's search text (UCP search_catalog query) becomes its context: need, budget, priorities.
+  const q = url.searchParams.get("q")
+  if (q) {
+    trace.context = contextFrom(q)
+    identity = annotate(sessionId, {}) ?? identity
+    logEvent(sessionId, "request", `${identity.claimed ?? "Agent"} searched "${q}"`, { context: trace.context })
   }
   if (!format || !["packet", "matrix", "full"].includes(format))
     format = identity.intent === "buy" ? "packet" : identity.intent === "research" ? "matrix" : "full"
@@ -33,7 +45,7 @@ export async function GET(req: Request) {
 
   const payload =
     format === "packet"
-      ? buildPacket(products, sessionId)
+      ? buildPacket(products, sessionId, trace.context)
       : format === "matrix"
         ? buildMatrix(products, sessionId)
         : buildFull(products, sessionId, identity.experience === "withheld")

@@ -2,7 +2,7 @@
 
 **Every agent gets its own experience.**
 
-Prism tells your store which AI model is shopping, offers each one the deal that converts it, and traces the copycats that clone you.
+Prism tells your store which AI model is shopping, gives each agent its own experience to win the sale without discounting, and stops copycats before they copy.
 
 Built at the **[Grok Bot Commerce London Hackathon](https://luma.com/cursor-td9f)** · 26 Sep 2026 · Fleek HQ, London.
 
@@ -19,8 +19,8 @@ But a signature only says *who runs* the agent. ChatGPT's key directory says `ch
 | | |
 |---|---|
 | **Recognize** | Web Bot Auth signature check, then an 8-question handshake that [LLMmap](https://github.com/pasquini-dario/LLMmap) turns into a model fingerprint (52 known models). Behaviour (catalog coverage, bursts, cart/checkout) gives intent. Every agent gets **trust / lead / risk** scores and an experience: `private-offer`, `negotiated`, `public` or `withheld`. |
-| **Negotiate** | The model family picks the tactic: a clean first offer for GPT, evidence first for Claude, a bundle instead of a discount for Llama. Prism's seller replies are written by **Claude Sonnet**; prices are decided in code and **signed**, so the checkout session honours them and nobody can forge one. Never below 90% of list. |
-| **Protect** | **Stop what it can:** impostors and scrapers get no prices and no signed offers, and their scraping bursts are refused. **Trace what it can't:** every description Prism serves carries an invisible per-visit marker, so a clone built from it leads back to the exact visit. Then the clone's domain is flagged, and every agent that checks an offer from it is told it's a traced copycat. Its forged offers fail verification, so it can't close a sale. |
+| **Sell** | Each agent's search (the UCP `search_catalog` query) becomes its **context**: needs, budget, priorities. Prism ranks what to show it, pre-answers its objections, and picks the tactic that converts its model: GPT's first offer is the bigger basket, Claude gets evidence + free samples, a haggler gets a bundle. **Revenue rule: never discount the product the agent came for.** Prism grows the basket or adds low-cost value instead, so no agent pays less than a flat price would earn. Prism's replies are written by **Claude Sonnet**; prices are decided in code and **signed**. |
+| **Protect** | **Stop before copying:** the handshake exposes impostors (claims ChatGPT, answers like Qwen), and a withheld agent gets **nothing**: no catalog, no prices, no signed offers, every request refused. **Defence in depth:** everything Prism serves carries an invisible per-visit marker, so if a scraper ever copies the human pages, the clone is traced to the exact visit and its domain flagged to every agent that checks an offer. |
 | **Learn** | Conversion and order value per model family, drop-off funnel, top questions (`GET /api/prism/metrics`). |
 
 ## The demo
@@ -32,13 +32,11 @@ Press **▶ Start the story**. It **auto-plays**; the moment you touch **◀ Bac
 | # | Problem | Slide | What Prism does |
 |---|---|---|---|
 | 1 | ① You can't see who's shopping | Every agent identified | Fingerprints GPT-4o, Claude 3.5 Sonnet and a Llama 3.2 running on this laptop; trust / lead / risk per agent |
-| 2 | ② Every agent gets the same offer | A deal per model | GPT takes a signed $64 first offer, Claude gets evidence + a free gift at $68, Llama haggles for $55 and takes a $100 bundle: **$232 vs $136 at one flat price** |
-| 3 | ③ Copycats | A copycat walks in | Claims ChatGPT, fingerprint says Qwen → impostor: $0 prices, 0 signed offers, 10 scraping requests refused |
-| 4 | ③ | It clones your store anyway | The store frame turns into *prism-skincare-outlet.shop*: lower prices, all sales final, forged offers |
-| 5 | ③ | Prism traces it | A glowing line from the copied text to the exact visit |
-| 6 | ③ | Prism stops it | Blocked at the door, nothing signed to sell with, domain flagged to every agent; download the takedown evidence |
-| 7 | ③ | Real buyers can't be fooled | A signed Grok Shopper rejects the outlet ("flagged by Prism as a traced copycat") and buys from the real store. The clone makes $0 |
-| 8 | ✓ | Three problems, solved | One row per problem, all from one line of install |
+| 2 | ② Every agent gets the same offer | An experience per agent | Each agent's search becomes its context. GPT takes an $84 serum + cleanser bundle, Claude gets evidence + free samples at $68, the haggler asks $55 and takes a $100 bundle. **$252 vs $136 at one flat price, $0 discounted on the serum** |
+| 3 | ③ Copycats | Stopped before it copies anything | Claims ChatGPT, fingerprint says Qwen → impostor → gate closed: 0 products, $0 prices, 0 signed offers, 10 requests refused |
+| 4 | ③ | Nothing to copy, so no clone | The outlet launch fails with 0 products; the invisible markers are the backup for anything scraped from human pages |
+| 5 | ③ | Real buyers stay yours | A signed Grok Shopper finds no cheaper fake, verifies the signed offer, buys at full price |
+| 6 | ✓ | Three problems, solved | One row per problem, all from one line of install |
 
 Start runs every agent once: slides 1–2 stream live, and everything else is computed in the background, so you can move back and forth freely.
 

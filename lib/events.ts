@@ -1,4 +1,4 @@
-import type { AgentIdentity, Cart, CheckoutSession, CloneStore, Incident, ModelGuess, PrismEvent, PrismEventKind, PrismState } from "./types"
+import type { AgentContext, AgentIdentity, Cart, CheckoutSession, CloneStore, Incident, ModelGuess, PrismEvent, PrismEventKind, PrismState } from "./types"
 
 // Per-session behaviour Prism has observed. Identity is derived from this in identify.ts.
 export type SessionTrace = {
@@ -16,6 +16,7 @@ export type SessionTrace = {
   identity?: AgentIdentity
   modelGuess?: ModelGuess
   copiedTo?: string // domain where content served to this session was found
+  context?: AgentContext
   // what we served, so copied content can be traced back
   servedDescriptions: Map<string, string>
 }

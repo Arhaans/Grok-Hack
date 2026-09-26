@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { AgentIdentity, Incident, ModelGuess, PrismState, RunResult, RunStep, Tactic } from "@/lib/types"
+import type { AgentIdentity, ModelGuess, PrismState, RunResult, RunStep, Tactic } from "@/lib/types"
 
 // The demo as a slideshow built around three problems Prism solves:
 //   ① you can't see who's shopping  ② every agent gets the same offer  ③ copycats clone you
@@ -21,19 +21,20 @@ type Shopper = {
   waiting?: "agent" | "prism"
   total?: number
   protocol: string[]
+  context?: { query: string; budget?: number; needs: string[] }
+  picks?: { sku: string; why: string }[]
 }
 type Story = {
   shoppers: Shopper[]
   copycat?: { claimed: string; fingerprint?: string; distance?: number; scraped?: number; identity?: AgentIdentity }
-  incident?: Incident
-  buyer?: { outletPrice?: number; reasons: string[]; total?: number }
-  stop?: { blocked: number; signedOffers: number; listings: number }
+  buyer?: { total?: number }
+  stop?: { blocked: number; signedOffers: number; listings: number; cloneFailed: boolean }
 }
 
 const PROBLEMS = [
   { n: 1, short: "Who's shopping?", solved: "Every agent identified" },
-  { n: 2, short: "One offer for everyone", solved: "A deal per model" },
-  { n: 3, short: "Copycats", solved: "Stopped and traced" },
+  { n: 2, short: "One offer for everyone", solved: "An experience per agent" },
+  { n: 3, short: "Copycats", solved: "Stopped before copying" },
 ]
 
 const CHAPTERS = [
@@ -48,37 +49,29 @@ const CHAPTERS = [
     id: "negotiate",
     problem: 2,
     title: "Every agent gets the same offer",
-    fix: "Prism negotiates per model",
-    line: "One flat price loses the haggler and under-serves the careful buyer. Prism picks the tactic that converts each model and signs the price.",
+    fix: "Prism builds each agent its own experience",
+    line: "Each agent's search becomes its context. Prism picks what to show it and how to sell to its model, and never discounts what it came for: it grows the basket or adds value instead.",
   },
   {
     id: "copycat",
     problem: 3,
     title: "A copycat walks in",
-    fix: "Exposed and blocked at the door",
-    line: "It claims to be ChatGPT; its answers say Qwen. No prices, no signed offers, and its scraping burst is refused. What it grabbed first is secretly marked.",
-  },
-  { id: "clone", problem: 3, title: "It clones your store anyway", fix: "…and Prism is watching", line: "An outlet appears: same shop, lower prices, no returns, its own checkout." },
-  {
-    id: "trace",
-    problem: 3,
-    title: "Prism traces it",
-    fix: "Back to the exact visit",
-    line: "Every description Prism served carried an invisible marker. The clone copied it, and it leads straight back to the visit.",
+    fix: "Stopped before it copies anything",
+    line: "It claims to be ChatGPT; its answers say Qwen. Exposed at the handshake, so the gate closes before a single product leaves.",
   },
   {
-    id: "stop",
+    id: "noclone",
     problem: 3,
-    title: "Prism stops it",
-    fix: "Three walls, one click to take it down",
-    line: "Blocked at the door, nothing signed to sell with, and its domain flagged to every agent that checks.",
+    title: "It tries to clone your store",
+    fix: "Nothing to copy, so no clone",
+    line: "No catalog, no prices, no signed offers. And if a scraper ever copies your human pages, every listing carries an invisible marker that traces it and flags it to every agent.",
   },
   {
     id: "buyer",
     problem: 3,
-    title: "Real buyers can't be fooled",
-    fix: "The clone makes $0",
-    line: "A signed agent finds the cheaper outlet, checks its offer with the merchant, and buys from the real store.",
+    title: "Real buyers stay yours",
+    fix: "No cheaper fake to lose them to",
+    line: "A signed buyer agent gets its private offer and buys from the real store. There is no outlet undercutting you.",
   },
   { id: "results", problem: 0, title: "Three problems, solved", fix: "One line to install", line: "" },
 ] as const
@@ -192,59 +185,6 @@ function Waiting({ label }: { label: string }) {
   )
 }
 
-// The glowing trace: copied text on the outlet → the visit that took it.
-function Trace({ incident, copycat }: { incident: Incident; copycat: Story["copycat"] }) {
-  return (
-    <div className="relative">
-      <Appear>
-        <div className="rounded-xl border border-red-400/50 bg-red-50/80 p-4">
-          <div className="text-[9px] uppercase tracking-widest text-red-700/70">Found on {incident.cloneUrl.replace("https://", "")}</div>
-          <div className="mt-1.5 text-[12px] leading-snug text-black/65">
-            “{incident.copiedSnippet.slice(0, 110)}…”
-            <span className="ml-1 rounded bg-red-600 px-1 font-mono text-[9px] text-white" style={{ animation: "storyPulse 1.6s ease-in-out infinite" }}>
-              {incident.markerFound}
-            </span>
-          </div>
-        </div>
-      </Appear>
-      <svg className="mx-auto block h-20 w-12 overflow-visible" viewBox="0 0 40 64">
-        <defs>
-          <linearGradient id="traceGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ef4444" />
-            <stop offset="50%" stopColor="#a855f7" />
-            <stop offset="100%" stopColor="#3b82f6" />
-          </linearGradient>
-          <filter id="traceGlow" x="-200%" y="-50%" width="500%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="b" />
-            <feMerge>
-              <feMergeNode in="b" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <path
-          d="M20 0 C 36 20, 4 44, 20 64"
-          fill="none"
-          stroke="url(#traceGrad)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          filter="url(#traceGlow)"
-          style={{ strokeDasharray: 90, strokeDashoffset: 90, animation: "storyDraw 1.4s cubic-bezier(0.65,0,0.35,1) 0.5s forwards" }}
-        />
-      </svg>
-      <Appear delay={1700}>
-        <div className="rounded-xl border border-black/10 bg-white/85 p-4 shadow-[0_0_30px_rgba(168,85,247,0.25)]">
-          <div className="text-[9px] uppercase tracking-widest text-black/40">Traced to visit</div>
-          <div className="mt-1 font-mono text-sm text-black/75">{incident.sourceSessionId}</div>
-          <div className="mt-1 text-[12px] text-black/55">
-            claimed <b>{incident.sourceClaimed}</b>, fingerprint <b className="text-red-700">{short(copycat?.fingerprint)}</b>
-          </div>
-        </div>
-      </Appear>
-    </div>
-  )
-}
-
 // ─── main component ──────────────────────────────────────────────────────────
 export function DemoStory() {
   const [chapter, setChapter] = useState(-1) // -1 before start
@@ -291,6 +231,12 @@ export function DemoStory() {
       const g = d as unknown as ModelGuess
       updateShopper(i, (x) => ({ ...x, fingerprint: g.top?.[0]?.model, distance: g.top?.[0]?.distance }))
     }
+    if (st.step === "fetch_packet")
+      updateShopper(i, (x) => ({
+        ...x,
+        context: d.context as Shopper["context"],
+        picks: d.recommended as Shopper["picks"],
+      }))
     if (st.step === "tactic") updateShopper(i, (x) => ({ ...x, tactic: d as unknown as Tactic, waiting: "agent" }))
     if (st.step === "negotiate") {
       const from = d.from as "agent" | "prism"
@@ -301,7 +247,7 @@ export function DemoStory() {
     if (st.step === "checkout") updateShopper(i, (x) => ({ ...x, waiting: undefined, total: (d.handoff as { total?: number } | undefined)?.total }))
   }
 
-  // Start: run every agent once. Shoppers stream; the copycat, trace and buyer run in the background.
+  // Start: run every agent once. Shoppers stream; the copycat and the verified buyer run in the background.
   const start = async () => {
     if (preparing) return
     setPreparing(true)
@@ -327,15 +273,16 @@ export function DemoStory() {
           scraped: scrape?.skus?.length,
           identity: identities.current.find((id) => id.sessionId === cc.sessionId),
         },
-        stop: { blocked: scrape?.blocked ?? 0, signedOffers: scrape?.signedOffers ?? 0, listings: scrape?.skus?.length ?? 0 },
+        stop: {
+          blocked: scrape?.blocked ?? 0,
+          signedOffers: scrape?.signedOffers ?? 0,
+          listings: scrape?.skus?.length ?? 0,
+          cloneFailed: cc.steps.some((x) => x.step === "clone_failed"),
+        },
       }))
-      const scan = (await (await fetch("/api/prism/scan", { method: "POST", body: "{}" })).json()) as { incident: Incident | null }
-      setStory((st) => ({ ...st, incident: scan.incident ?? undefined }))
       const buyer = await run("agent=buyer&brain=scripted&pace=0")
-      const outlet = (buyer.steps.find((x) => x.step === "check_clone")?.data as { price: number; problems: string[] }[] | undefined) ?? []
-      const cheapest = [...outlet].sort((x, y) => x.price - y.price)[0]
       const hand = buyer.steps.find((x) => x.step === "checkout")?.data as { total?: number } | undefined
-      setStory((st) => ({ ...st, buyer: { outletPrice: cheapest?.price, reasons: cheapest?.problems ?? [], total: hand?.total } }))
+      setStory((st) => ({ ...st, buyer: { total: hand?.total } }))
     })()
     await Promise.all([shoppersDone, background])
     setPreparing(false)
@@ -370,10 +317,8 @@ export function DemoStory() {
   const ready: Record<ChapterId, boolean> = {
     identify: s.shoppers.length > 0 && s.shoppers.every((x) => x.fingerprint && x.tactic),
     negotiate: s.shoppers.length > 0 && s.shoppers.every((x) => x.total !== undefined),
-    copycat: !!s.copycat,
-    clone: !!s.copycat,
-    trace: !!s.incident,
-    stop: !!s.incident && !!s.stop,
+    copycat: !!s.copycat && !!s.stop,
+    noclone: !!s.stop,
     buyer: !!s.buyer,
     results: !!s.buyer,
   }
@@ -386,20 +331,19 @@ export function DemoStory() {
     return () => clearTimeout(t)
   }, [auto, current, chapter, last, currentReady])
 
-  // The frame shows the copycat outlet on the clone / trace / stop slides
-  const clone = !!current && ["clone", "trace", "stop"].includes(current.id) && !!s.copycat
+  const clone = false // the copycat never gets far enough to open an outlet
 
   const revenue = s.shoppers.reduce((a, x) => a + (x.total ?? 0), 0)
   // at one flat price, the haggler (asked $55) walks; the others pay $68
   const flatRevenue = s.shoppers.filter((x) => x.model !== "llama-3.2-3b-live").length * FLAT_PRICE
   const solved = (n: number) =>
-    started && (n === 1 ? chapter >= at("identify") && ready.identify : n === 2 ? chapter >= at("negotiate") && ready.negotiate : chapter >= at("stop") && ready.stop)
+    started && (n === 1 ? chapter >= at("identify") && ready.identify : n === 2 ? chapter >= at("negotiate") && ready.negotiate : chapter >= at("copycat") && ready.copycat)
 
   const downloadEvidence = () => {
-    const blob = new Blob([JSON.stringify({ incident: s.incident, copycat: s.copycat, stopped: s.stop }, null, 2)], { type: "application/json" })
+    const blob = new Blob([JSON.stringify({ impostor: s.copycat, stopped: s.stop }, null, 2)], { type: "application/json" })
     const a = document.createElement("a")
     a.href = URL.createObjectURL(blob)
-    a.download = `prism-evidence-${s.incident?.id ?? "incident"}.json`
+    a.download = "prism-impostor-report.json"
     a.click()
   }
 
@@ -528,7 +472,7 @@ export function DemoStory() {
                   style={{
                     width: i <= chapter ? "100%" : "0%",
                     transition: "width 0.6s cubic-bezier(0.16,1,0.3,1)",
-                    background: c.problem === 1 ? "#3b82f6" : c.problem === 2 ? "#a855f7" : c.problem === 3 ? (c.id === "stop" || c.id === "buyer" ? "#10b981" : "#ef4444") : "#111",
+                    background: c.problem === 1 ? "#3b82f6" : c.problem === 2 ? "#a855f7" : c.problem === 3 ? (c.id === "copycat" ? "#ef4444" : "#10b981") : "#111",
                   }}
                 />
               </button>
@@ -618,7 +562,7 @@ export function DemoStory() {
               </div>
             )}
 
-            {/* ② negotiate */}
+            {/* ② an experience per agent */}
             {current?.id === "negotiate" && (
               <>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -629,7 +573,26 @@ export function DemoStory() {
                           <span className="text-[13px] text-black/80">{x.label}</span>
                           {x.total !== undefined && <span className="font-mono text-sm text-emerald-700">✓ ${x.total}</span>}
                         </div>
-                        {x.tactic && <div className="mt-1 text-[10px] text-sky-700">{x.tactic.name}</div>}
+                        {x.context && (
+                          <div className="mt-2 rounded-lg bg-violet-500/[0.07] p-2 text-[10px] leading-snug text-black/60" style={{ animation: "storyIn .5s both" }}>
+                            <div className="uppercase tracking-widest text-violet-700/70">Its context</div>
+                            <div className="mt-0.5 italic">&ldquo;{x.context.query}&rdquo;</div>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {x.context.needs.map((n) => (
+                                <span key={n} className="rounded-full bg-white px-1.5 py-0.5 text-violet-700">
+                                  {n}
+                                </span>
+                              ))}
+                              {x.context.budget && <span className="rounded-full bg-white px-1.5 py-0.5 text-violet-700">budget ${x.context.budget}</span>}
+                            </div>
+                          </div>
+                        )}
+                        {x.tactic && (
+                          <div className="mt-1.5 text-[10px] text-sky-700">
+                            Served: <b>{x.tactic.name}</b>
+                            {x.picks && x.picks.length > 1 ? ` · shown ${x.picks.slice(1).map((k) => k.sku.replace(/-/g, " ")).join(", ")} first` : ""}
+                          </div>
+                        )}
                         <div className="mt-2.5 flex-1 space-y-1.5">
                           {x.lines.map((l, k) => (
                             <div key={k} className={`flex ${l.from === "prism" ? "justify-end" : "justify-start"}`} style={{ animation: "storyIn .5s both" }}>
@@ -676,15 +639,20 @@ export function DemoStory() {
                       <div className="text-2xl font-light text-emerald-400">
                         +<Counter to={revenue - flatRevenue} prefix="$" />
                       </div>
+                      <div className="text-[11px] leading-snug text-white/60">
+                        Serum sold at the full ${FLAT_PRICE} to every agent.
+                        <br />
+                        $0 discounted: only baskets grew.
+                      </div>
                     </div>
                   </Appear>
                 )}
               </>
             )}
 
-            {/* ③ copycat */}
+            {/* ③ copycat: stopped at the door */}
             {current?.id === "copycat" &&
-              (s.copycat ? (
+              (s.copycat && s.stop ? (
                 <Appear>
                   <div className="rounded-xl border border-red-400/60 bg-white/85 p-5">
                     <div className="flex items-center justify-between">
@@ -697,11 +665,20 @@ export function DemoStory() {
                       </div>
                     </Appear>
                     <Appear delay={450}>
-                      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2.5 text-[13px] text-emerald-800">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[11px] text-white" style={{ animation: "storyTick .5s both" }}>
+                          ✓
+                        </span>
+                        Gate closed before it saw a single product
+                      </div>
+                    </Appear>
+                    <Appear delay={650}>
+                      <div className="mt-3 grid grid-cols-4 gap-2 text-center">
                         {[
+                          { v: String(s.stop.listings), l: "products copied" },
                           { v: "$0", l: "prices shown" },
-                          { v: String(s.stop?.signedOffers ?? 0), l: "signed offers" },
-                          { v: String(s.stop?.blocked ?? 0), l: "requests refused" },
+                          { v: String(s.stop.signedOffers), l: "signed offers" },
+                          { v: String(s.stop.blocked), l: "requests refused" },
                         ].map((k) => (
                           <div key={k.l} className="rounded-lg bg-black/[0.04] py-2.5">
                             <div className="text-xl font-light">{k.v}</div>
@@ -712,76 +689,52 @@ export function DemoStory() {
                     </Appear>
                     {s.copycat.identity && (
                       <div className="mt-4 space-y-1.5">
-                        <Meter label="trust" value={s.copycat.identity.scores.trust} tone="bg-emerald-500/70" delay={600} />
-                        <Meter label="lead" value={s.copycat.identity.scores.lead} tone="bg-sky-500/70" delay={700} />
-                        <Meter label="risk" value={s.copycat.identity.scores.risk} tone="bg-red-500/80" delay={800} />
+                        <Meter label="trust" value={s.copycat.identity.scores.trust} tone="bg-emerald-500/70" delay={700} />
+                        <Meter label="lead" value={s.copycat.identity.scores.lead} tone="bg-sky-500/70" delay={800} />
+                        <Meter label="risk" value={s.copycat.identity.scores.risk} tone="bg-red-500/80" delay={900} />
                       </div>
                     )}
-                    <p className="mt-3 text-[11px] text-black/45">
-                      It grabbed {s.copycat.scraped} public listings before the block. Every one carries an invisible marker tied to this visit.
-                    </p>
+                    <button onClick={downloadEvidence} className="mt-4 w-full rounded-lg border border-black/10 px-3 py-2 text-left text-[11px] text-black/60 hover:bg-black/[0.03]">
+                      ⬇ Download the impostor report (claimed vs fingerprinted model, requests refused)
+                    </button>
                   </div>
                 </Appear>
               ) : (
                 <Waiting label="THE COPYCAT IS RUNNING ITS HANDSHAKE…" />
               ))}
 
-            {current?.id === "clone" &&
-              (s.copycat ? (
-                <Appear>
-                  <div className="rounded-xl border border-red-400/60 bg-red-50/80 p-5 text-[13px] leading-relaxed text-black/65">
-                    <div className="text-[10px] uppercase tracking-widest text-red-700/70">prism-skincare-outlet.shop · see it on the right</div>
-                    <div className="mt-2">
-                      Serum 50ml: $68 → <b className="text-red-700">$54</b>
-                    </div>
-                    <div>
-                      Returns: 30 days → <b className="text-red-700">all sales final</b>
-                    </div>
-                    <div>
-                      Checkout: <b className="text-red-700">pay.prism-skincare-outlet.shop</b>
-                    </div>
-                    <div>
-                      Offers: <b className="text-red-700">forged</b> (it was never given a signed one)
-                    </div>
-                  </div>
-                </Appear>
-              ) : (
-                <Waiting label="WAITING FOR THE CLONE…" />
-              ))}
-
-            {current?.id === "trace" && (s.incident ? <Trace incident={s.incident} copycat={s.copycat} /> : <Waiting label="SCANNING THE OUTLET…" />)}
-
-            {current?.id === "stop" &&
-              (s.incident && s.stop ? (
+            {/* ③ no clone */}
+            {current?.id === "noclone" &&
+              (s.stop ? (
                 <div className="space-y-3">
-                  {[
-                    { t: "Blocked at the door", d: `Withheld: $0 prices, ${s.stop.signedOffers} signed offers, ${s.stop.blocked} scraping requests refused.` },
-                    { t: "Nothing to sell with", d: "Every offer on the outlet is forged. Agents verify offers with the merchant, so the clone can't close a single agent sale." },
-                    { t: "Flagged to every agent", d: `${s.incident.cloneUrl.replace("https://", "")} is flagged: any agent that checks an offer from it is told it's a traced copycat.` },
-                  ].map((k, i) => (
-                    <Appear key={k.t} delay={i * 180}>
-                      <div className="rounded-xl border border-emerald-500/30 bg-white/85 p-4">
-                        <div className="flex items-center gap-2 text-sm text-black/80">
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[11px] text-white" style={{ animation: "storyTick .5s both" }}>
-                            ✓
-                          </span>
-                          {k.t}
-                        </div>
-                        <p className="mt-1.5 text-[12px] leading-relaxed text-black/55">{k.d}</p>
+                  <Appear>
+                    <div className="rounded-xl border border-dashed border-red-300 bg-white/70 p-5">
+                      <div className="flex items-center gap-2">
+                        <span className="flex gap-1">
+                          <span className="h-2 w-2 rounded-full bg-black/10" />
+                          <span className="h-2 w-2 rounded-full bg-black/10" />
+                          <span className="h-2 w-2 rounded-full bg-black/10" />
+                        </span>
+                        <span className="rounded bg-black/[0.04] px-2 py-0.5 font-mono text-[11px] text-black/40 line-through">prism-skincare-outlet.shop</span>
                       </div>
-                    </Appear>
-                  ))}
-                  <Appear delay={600}>
-                    <button onClick={downloadEvidence} className="w-full rounded-xl bg-black px-5 py-3.5 text-left text-[13px] text-white transition-transform hover:scale-[1.01]">
-                      ⬇ Download takedown evidence
-                      <span className="mt-0.5 block text-[10px] text-white/50">marker, visit, claimed vs fingerprinted model, copied text, price changes, fake checkout</span>
-                    </button>
+                      <div className="mt-4 text-center">
+                        <div className="text-4xl font-light text-black/25">0 products</div>
+                        <div className="mt-1 text-[12px] text-red-700">Launch failed: nothing to copy</div>
+                      </div>
+                    </div>
+                  </Appear>
+                  <Appear delay={300}>
+                    <div className="rounded-xl border border-black/[0.07] bg-white/85 p-4 text-[12px] leading-relaxed text-black/60">
+                      <b className="text-black/80">Defence in depth.</b> Even your human pages carry an invisible per-visit marker. If a scraper ever copies them, Prism traces
+                      the clone to the exact visit and tells every agent that checks an offer from it that it&apos;s a copycat.
+                    </div>
                   </Appear>
                 </div>
               ) : (
                 <Waiting label="PREPARING…" />
               ))}
 
+            {/* ③ real buyers stay yours */}
             {current?.id === "buyer" &&
               (s.buyer ? (
                 <Appear>
@@ -790,19 +743,17 @@ export function DemoStory() {
                       <span className="text-sm text-black/80">Grok Shopper</span>
                       <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-700">✓ Web Bot Auth signature · private offer</span>
                     </div>
-                    <div className="mt-3 text-[13px] text-black/60">
-                      Found the outlet at <b>${s.buyer.outletPrice}</b>. Checked the offer with Prism Skincare:
+                    <div className="mt-3 space-y-1.5 text-[12px] text-black/60">
+                      <Appear delay={150}>
+                        <div>Searched for a cheaper seller of the serum: <b className="text-black/80">none found</b>. No clone exists.</div>
+                      </Appear>
+                      <Appear delay={350}>
+                        <div>Verified the merchant&apos;s signed offer: <b className="text-emerald-700">valid</b>.</div>
+                      </Appear>
                     </div>
-                    <div className="mt-2 space-y-1">
-                      {s.buyer.reasons.map((r, i) => (
-                        <Appear key={r} delay={250 + i * 150}>
-                          <div className="rounded-md bg-red-500/10 px-2.5 py-1.5 text-[12px] text-red-700">✗ {r}</div>
-                        </Appear>
-                      ))}
-                    </div>
-                    <Appear delay={900}>
+                    <Appear delay={650}>
                       <div className="mt-3 rounded-lg bg-emerald-500/10 px-3 py-2.5 text-[13px] text-emerald-800">
-                        ✓ Bought from prismskincare.com for <b>${s.buyer.total}</b>. The clone made <b>$0</b>.
+                        ✓ Bought from prismskincare.com for <b>${s.buyer.total}</b>, at full price.
                       </div>
                     </Appear>
                   </div>
@@ -824,27 +775,29 @@ export function DemoStory() {
                   },
                   {
                     n: 2,
-                    t: "A deal per model",
+                    t: "An experience per agent",
                     k: [
                       { v: revenue, l: "revenue from agents", prefix: "$" },
                       { v: revenue - flatRevenue, l: "vs one flat price", prefix: "+$" },
+                      { v: 0, l: "discounted on the serum", prefix: "$" },
                     ],
                   },
                   {
                     n: 3,
-                    t: "Copycat stopped and traced",
+                    t: "Copycat stopped before copying",
                     k: [
-                      { v: s.stop?.blocked ?? 0, l: "scraping requests refused" },
-                      { v: 0, l: "sales made by the clone", prefix: "$" },
+                      { v: s.stop?.listings ?? 0, l: "products copied" },
+                      { v: s.stop?.blocked ?? 0, l: "requests refused" },
+                      { v: 0, l: "clones launched" },
                     ],
                   },
-                ].map((r, i) => (
+                ].map((r: { n: number; t: string; k: { v: number; l: string; prefix?: string }[] }, i) => (
                   <Appear key={r.n} delay={i * 180}>
                     <div className="flex items-center gap-5 rounded-xl border border-emerald-500/30 bg-white/85 p-4">
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-sm text-white" style={{ animation: "storyTick .5s both" }}>
                         ✓
                       </span>
-                      <div className="min-w-[180px] text-[15px] text-black/80">{r.t}</div>
+                      <div className="min-w-[170px] text-[15px] text-black/80">{r.t}</div>
                       {r.k.map((k) => (
                         <div key={k.l}>
                           <div className="text-2xl font-light tracking-tight">

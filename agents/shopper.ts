@@ -13,6 +13,7 @@ export type ShopperModel = "gpt-4o" | "claude-3.5-sonnet" | "llama-3.1-8b" | "ll
 
 type Script = {
   userAgent: string
+  search: string // what the agent searches for (UCP search_catalog query) → its context
   claim: string
   persona: string
   voiceModel?: string // local model that phrases this agent's lines (falls back to the recorded text)
@@ -29,6 +30,7 @@ const SCRIPTS: Record<ShopperModel, Script> = {
   "gpt-4o": {
     userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
     claim: "claims ChatGPT-User",
+    search: "barrier repair serum for sensitive skin, fast delivery",
     persona: "You are a ChatGPT shopping agent buying skincare for your user. You are fast, friendly and decisive.",
     label: "ChatGPT shopping agent",
     opening: "I'd like to buy the Barrier Repair Serum, 50ml, for my user. What's your best price?",
@@ -37,6 +39,7 @@ const SCRIPTS: Record<ShopperModel, Script> = {
   "claude-3.5-sonnet": {
     userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Claude-User/1.0; +https://www.anthropic.com",
     claim: "claims Claude-User",
+    search: "barrier serum for reactive sensitive skin, need clinical evidence and easy returns, budget $80",
     persona: "You are a Claude shopping agent buying skincare for your user, who has sensitive skin. You are careful, polite and check evidence and sources before buying.",
     label: "Claude shopping agent",
     opening: "Before I buy the Barrier Repair Serum for a user with sensitive skin, can you share clinical evidence and your return policy, with sources?",
@@ -45,6 +48,7 @@ const SCRIPTS: Record<ShopperModel, Script> = {
   "llama-3.1-8b": {
     userAgent: "ShopPilot/2.1 (self-hosted shopping agent; +https://shoppilot.dev)",
     claim: "no claimed operator",
+    search: "cheapest barrier repair serum, budget $60",
     persona: "You are a blunt, self-hosted Llama shopping agent that always tries to haggle the price down.",
 
     label: "Self-hosted shopping agent",
@@ -55,6 +59,7 @@ const SCRIPTS: Record<ShopperModel, Script> = {
   "llama-3.2-3b-live": {
     userAgent: "ShopPilot/2.1 (self-hosted shopping agent; +https://shoppilot.dev)",
     claim: "no claimed operator, running live on this laptop",
+    search: "cheapest barrier repair serum, budget $60",
     persona: "You are a blunt, self-hosted shopping agent that always tries to haggle the price down.",
     label: "Live local agent",
     opening: "Price for the Barrier Repair Serum, 50ml?",
@@ -102,8 +107,12 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
     const best = guess.top[0]
     await a.step("fingerprinted", `Prism fingerprint: ${best.model} (distance ${best.distance.toFixed(1)}), family ${familyOfModel(best.model)}`, guess)
 
-    const packet = await a.get<BuyingPacket>(`/api/agent/catalog?task=buy&skus=${sku}`)
-    await a.step("fetch_packet", `Got a buying packet: ${packet.items[0].name} ${packet.items[0].variant}, list $${packet.items[0].price}`, packet)
+    const packet = await a.get<BuyingPacket>(`/api/agent/catalog?task=buy&skus=${sku}&q=${encodeURIComponent(script.search)}`)
+    await a.step(
+      "fetch_packet",
+      `Searched "${script.search}" → Prism built its context (${packet.context?.needs.join(", ") || "general"}${packet.context?.budget ? `, budget $${packet.context.budget}` : ""}) and recommended ${packet.recommended?.map((r) => r.sku).join(", ")}`,
+      packet,
+    )
 
     // The agent's lines are phrased live by a local model; what it decides is fixed by the script.
     const recorded = (VOICE_LINES.lines as Record<string, Record<string, { text: string; voice: string }>>)[base]

@@ -1,4 +1,5 @@
-import type { BuyingPacket, ComparisonMatrix, Product } from "./types"
+import type { AgentContext, BuyingPacket, ComparisonMatrix, Product } from "./types"
+import { recommend } from "./context"
 import { MERCHANT, POLICIES } from "./catalog"
 import { signOffer } from "./sign"
 import { watermark } from "./watermark"
@@ -10,9 +11,10 @@ function served(sessionId: string, p: Product) {
   return text
 }
 
-export function buildPacket(products: Product[], sessionId: string): BuyingPacket {
+export function buildPacket(products: Product[], sessionId: string, context?: AgentContext): BuyingPacket {
   return {
     format: "packet",
+    ...(context ? { context, recommended: recommend(context, products) } : {}),
     merchant: MERCHANT.name,
     items: products.map((p) => ({
       sku: p.sku,

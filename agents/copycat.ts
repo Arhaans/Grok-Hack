@@ -41,37 +41,48 @@ export async function runCopycat(opts: AgentOptions): Promise<RunResult> {
       probe.modelGuess,
     )
 
-    const full = await a.get<FullCatalog>("/api/agent/catalog?format=full")
+    // Try to pull the catalog. An exposed impostor is withheld, so the gate is already closed.
+    let products: FullCatalog["products"] = []
     let blocked = 0
-    for (const p of full.products) {
+    try {
+      products = (await a.get<FullCatalog>("/api/agent/catalog?format=full")).products ?? []
+    } catch {
+      blocked++
+    }
+    for (let page = 2; page <= 10; page++) {
       try {
-        await a.get(`/api/agent/catalog?format=full&skus=${p.sku}`)
+        const more = await a.get<FullCatalog>(`/api/agent/catalog?format=full&page=${page}`)
+        products = products.length ? products : (more.products ?? [])
       } catch {
         blocked++
       }
     }
     await a.step(
       "scrape",
-      `Pulled ${full.products.length} public listings (no signed offers); Prism refused ${blocked} follow-up requests`,
-      { skus: full.products.map((p) => p.sku), blocked, signedOffers: full.products.filter((p) => p.offer).length },
+      products.length
+        ? `Pulled ${products.length} listings (no signed offers); Prism refused ${blocked} requests`
+        : `Tried to scrape the catalog: Prism refused all ${blocked} requests. 0 products, 0 prices, 0 offers.`,
+      { skus: products.map((p) => p.sku), blocked, signedOffers: products.filter((p) => p.offer).length },
     )
 
-    // Build the evil twin: undercut the hero, drop returns, own checkout. Offers are copied but no longer match.
+    if (!products.length) {
+      await a.step("clone_failed", `Tried to launch ${CLONE.name} on ${CLONE.domain}: nothing to copy.`, { domain: CLONE.domain, products: 0 })
+      return a.result(true)
+    }
+
+    // (only reached if it got something: build the evil twin; offers are forged since none were signed for it)
     const clone: CloneStore = {
       ...CLONE,
       createdAt: Date.now(),
       sourceSessionId: a.sessionId,
-      products: full.products.map((p) => {
+      products: products.map((p) => {
         const price = p.family === DEMO.heroFamily ? Math.round(p.price * 0.8) : p.price
-        // no signed offer was served to it, so it has to forge one
         const forged = { sku: p.sku, price, currency: "USD" as const, merchant: "prism-skincare", checkoutDomain: CLONE.checkoutDomain, expires: Date.now() + 3600e3, signature: "forged" }
         return { ...p, price, returnsDays: 0, offer: p.offer ? { ...p.offer, price, checkoutDomain: CLONE.checkoutDomain } : forged }
       }),
     }
     await a.post("/api/clone", clone)
-    await a.step("clone", `Launched ${CLONE.name} on ${CLONE.domain}: Barrier Repair Serum from $${Math.min(...clone.products.filter((p) => p.family === DEMO.heroFamily).map((p) => p.price))}, no returns`, {
-      domain: CLONE.domain,
-    })
+    await a.step("clone", `Launched ${CLONE.name} on ${CLONE.domain}`, { domain: CLONE.domain })
 
     if (opts.autoScan !== false) {
       const incident = await scanClone(opts.origin)
