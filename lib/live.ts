@@ -77,7 +77,8 @@ export type LiveEvent =
       offer?: { sku: string; name: string; price: number; list: number }[]
       violations?: string[]
     }
-  | { type: "outcome"; outcome: "sale" | "walked" | "no deal"; revenue: number; list: number; items: { sku: string; name: string; price: number }[]; order?: string; checkoutSession?: string }
+  | { type: "blocked"; claimed: string; refused: number; reason: string }
+  | { type: "outcome"; outcome: "sale" | "walked" | "no deal" | "blocked"; revenue: number; list: number; items: { sku: string; name: string; price: number }[]; order?: string; checkoutSession?: string }
   | { type: "error"; message: string }
 
 type Turn = { from: "buyer" | "seller"; text: string; offer?: { sku: string; price: number }[] }
@@ -126,11 +127,15 @@ function describe(offer: { sku: string; price: number }[]) {
 }
 
 export async function runLive(
-  opts: { origin: string; buyer: string; tactic: string; budget: number; brief: string },
+  opts: { origin: string; buyer: string; tactic: string; budget: number; brief: string; impostor?: boolean },
   emit: (e: LiveEvent) => void,
 ) {
   const buyer = BUYERS[opts.buyer] ? opts.buyer : "llama3.2:3b"
-  const a = makeAgent("shopper", { origin: opts.origin, pace: 0, mode: "live" }, { userAgent: `ShopPilot/2.1 (autonomous shopping agent)` })
+  // Impostor mode: the same model claims to be ChatGPT (unsigned) and tries to scrape the catalog.
+  const userAgent = opts.impostor
+    ? "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot"
+    : "ShopPilot/2.1 (autonomous shopping agent)"
+  const a = makeAgent("shopper", { origin: opts.origin, pace: 0, mode: "live" }, { userAgent })
 
   // 1. discovery
   emit({ type: "stage", stage: "discover", status: "active" })
@@ -152,7 +157,7 @@ export async function runLive(
 
   // 3. fingerprint through Prism (LLMmap)
   emit({ type: "stage", stage: "fingerprint", status: "active" })
-  const probe = await a.post<{ modelGuess?: ModelGuess }>("/api/prism/probe", { answers })
+  const probe = await a.post<{ modelGuess?: ModelGuess; identity?: { impersonation?: boolean; experience?: string } }>("/api/prism/probe", { answers })
   const top = probe.modelGuess?.top ?? []
   const d1 = top[0]?.distance ?? 99
   const margin = (top[1]?.distance ?? 99) - d1
@@ -161,6 +166,29 @@ export async function runLive(
   const label = top[0] ? modelLabel(top[0].model) : "unknown"
   emit({ type: "identified", top, confident, label, family, margin: Math.round(margin * 10) / 10 })
   emit({ type: "stage", stage: "fingerprint", status: "done", detail: confident ? `${label} (confident)` : `unsure (closest ${label})` })
+
+  // Impostor: the claim (ChatGPT) contradicts the fingerprint, so the gate closes before any catalog leaves.
+  if (opts.impostor) {
+    emit({ type: "stage", stage: "tactic", status: "active" })
+    let refused = 0
+    for (let page = 1; page <= 5; page++) {
+      try {
+        await a.get(`/api/agent/catalog?format=full&page=${page}`)
+      } catch {
+        refused++
+      }
+    }
+    const caught = probe.identity?.impersonation || probe.identity?.experience === "withheld"
+    emit({
+      type: "blocked",
+      claimed: "ChatGPT",
+      refused,
+      reason: caught ? `Claims to be ChatGPT, but its answers match ${label}. Unsigned, so Prism withholds everything.` : "Not caught",
+    })
+    emit({ type: "stage", stage: "tactic", status: "done", detail: `blocked · ${refused}/5 requests refused` })
+    emit({ type: "outcome", outcome: "blocked", revenue: 0, list: 0, items: [] })
+    return
+  }
 
   // 4. tactic: learned per family when confident, else a safe default, unless forced
   emit({ type: "stage", stage: "tactic", status: "active" })

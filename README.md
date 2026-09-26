@@ -52,18 +52,17 @@ Every step streams to the page as it happens. Each chat line is labelled live or
 
 ## Live lab (`/live`): nothing scripted
 
-![Live lab: a real Qwen agent identified and negotiating with Claude Sonnet](docs/images/prism-live-lab.png)
+Built for the least attentive viewer: **one choice, one button, one sentence saying what's happening, three answers.**
 
-A real AI agent shops the store while you watch. Pick the buyer (**Llama 3.2 3B** or **Qwen 2.5 3B**, running on this laptop via Ollama), pick how Prism sells (or let Prism pick), press **Go live**:
+1. Choose who walks in: **A real shopper** (a local AI with a secret budget) or **An impostor** (the same AI claiming to be ChatGPT to copy the store).
+2. Press **▶ Start**. Llama 3.2 3B or Qwen 2.5 3B runs live on the laptop via Ollama.
+3. Watch three cards fill in: **Who is shopping?** (Prism's prediction, plus a "reveal the real answer" check) · **What did Prism do?** (the tactic and offer, or "Blocked it") · **Did it work?** (the sale and order, or "0 products copied").
 
-1. **Discover:** the agent finds the store's endpoints at `/.well-known/ucp`.
-2. **Handshake:** the agent's own model answers Prism's 8 probes.
-3. **Fingerprint:** LLMmap predicts the model, with a confidence margin. A "reveal" button shows whether it was right.
-4. **Tactic:** Prism picks the tactic that converted best for that model in live runs (or a safe default if unsure).
-5. **Negotiate:** a real, unscripted chat. The buyer has a secret budget and decides for itself; **Claude Sonnet** sells knowing only Prism's prediction. Prices are checked against hard rules (serum never below list).
-6. **Checkout:** a real UCP checkout session with signed prices, ending in an order.
+| A real shopper | An impostor |
+|---|---|
+| ![Live lab: a real shopper buys for $87](docs/images/prism-live-lab.png) | ![Live lab: an impostor is blocked](docs/images/prism-live-impostor.png) |
 
-Real agents can and do walk away. In testing, both models were identified correctly every time, and 3 of 4 runs sold at $87 with the serum at full price.
+Under the hood: the agent finds the store at `/.well-known/ucp` → answers Prism's 8 probes itself → LLMmap predicts the model with a confidence margin → Prism picks the tactic that converted best for it (or blocks an impostor whose claim contradicts its fingerprint) → **Claude Sonnet** negotiates, knowing only the prediction, under hard price rules → a real UCP checkout with signed prices. Options (tactic, budget, brief) are one click away for the curious. Real agents can walk away, and sometimes do.
 
 **What we learned from 36 live negotiations** (sales out of 3 · average revenue; Claude Sonnet as seller, $90 secret budget):
 

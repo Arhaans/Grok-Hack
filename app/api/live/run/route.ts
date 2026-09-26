@@ -18,6 +18,7 @@ export async function POST(req: Request) {
             buyer: q.get("buyer") ?? "llama3.2:3b",
             tactic: q.get("tactic") ?? "auto",
             budget: Math.max(20, Math.min(300, Number(q.get("budget") ?? 90))),
+            impostor: q.get("impostor") === "1",
             brief: (q.get("brief") ?? "Buy a barrier repair serum for my sensitive, reactive skin. Get the best deal you can.").slice(0, 300),
           },
           send,
