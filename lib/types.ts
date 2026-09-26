@@ -13,10 +13,15 @@ export type AgentIdentity = {
   evidence: string[]            // ["valid signature", "40 SKUs in 3s", ...]
   impersonation?: boolean       // unsigned claim contradicted by the model fingerprint
   modelGuess?: ModelGuess       // from LLMmap, experimental
+  scores: { trust: number; lead: number; risk: number }  // 0–100 each
+  experience: Experience        // what Prism serves this agent right now
   firstSeen: number
   lastSeen: number
   requests: number
 }
+
+// trust > 90 && lead > 80 → private signed offer; risk > 70 → private routes withheld (catalog still marked)
+export type Experience = "private-offer" | "negotiated" | "public" | "withheld"
 
 export type ModelGuess = {
   top: { model: string; distance: number }[]   // top 3, lower distance = closer

@@ -133,6 +133,21 @@ export function computeIdentity(t: SessionTrace): AgentIdentity {
     else evidence.push(`Model fingerprint consistent with claim: closest to ${best.model} (distance ${best.distance.toFixed(1)})`)
   }
 
+  // Scores (0–100) used by the experience rule and shown in the UI.
+  const consistent = !!modelGuess?.inLibrary && !modelGuess.contradictsClaim
+  const impersonating = !verified && !!op && !!modelGuess?.contradictsClaim
+  const trust = verified ? 96 : impersonating ? 4 : consistent ? 72 : op ? 35 : 45
+  const lead =
+    intent === "buy"
+      ? Math.min(100, 55 + (t.topics.size ? 10 : 0) + (t.paths.has("/api/agent/negotiate") ? 5 : 0) + (hasCart ? 15 : 0) + (hasCheckout ? 15 : 0) + (verified ? 5 : 0))
+      : intent === "research" ? 40 : intent === "harvest" ? 3 : 20
+  const risk = Math.min(
+    100,
+    (intent === "harvest" ? 55 + Math.round(15 * coverage) : 5) + (impersonating ? 25 : 0) + (t.copiedTo ? 25 : 0) + (!verified && !consistent ? 10 : 0),
+  )
+  const experience: AgentIdentity["experience"] =
+    risk > 70 ? "withheld" : trust > 90 && lead > 80 ? "private-offer" : consistent && intent === "buy" ? "negotiated" : "public"
+
   const identity: AgentIdentity = {
     sessionId: t.sessionId,
     claimed,
@@ -142,8 +157,10 @@ export function computeIdentity(t: SessionTrace): AgentIdentity {
     confidence: Math.round(confidence * 100) / 100,
     evidence,
     // impersonation needs evidence against the claim, not just a missing signature
-    impersonation: !verified && !!op && !!modelGuess?.contradictsClaim,
+    impersonation: impersonating,
     modelGuess,
+    scores: { trust, lead, risk },
+    experience,
     firstSeen: t.firstSeen,
     lastSeen: t.lastSeen,
     requests: times.length,

@@ -7,7 +7,7 @@ import { bad, json, originOf } from "@/lib/http"
 export const maxDuration = 120
 
 // POST /api/demo/run?agent=buyer|researcher|copycat|shopper[&model=gpt-4o|claude-3.5-sonnet|llama-3.1-8b]
-//[&pace=600][&brain=scripted|grok][&autoScan=0][&probeAnswers=recorded]
+//[&pace=600][&brain=scripted|grok][&autoScan=0][&probeAnswers=recorded][&voice=live]
 // Runs the bot against our own public API and returns its steps (RunResult). Events stream via /api/prism/events.
 export async function POST(req: Request) {
   const q = new URL(req.url).searchParams
@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     brain: (q.get("brain") as "scripted" | "grok" | null) ?? undefined,
     autoScan: q.get("autoScan") !== "0",
     probeAnswers: (q.get("probeAnswers") === "recorded" ? "recorded" : "live") as "live" | "recorded",
+    voice: (q.get("voice") === "live" ? "live" : "recorded") as "live" | "recorded",
   }
   if (agent === "buyer") return json(await runBuyer(opts))
   if (agent === "researcher") return json(await runResearcher(opts))

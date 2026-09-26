@@ -1,8 +1,10 @@
 import { makeAgent, type AgentOptions } from "./client"
 import REPLAYS from "./fixtures/replays.json"
+import VOICE_LINES from "./fixtures/voice-lines.json"
 import { annotate } from "@/lib/identify"
 import { familyOfModel } from "@/lib/fingerprint"
 import { getProduct } from "@/lib/catalog"
+import { speak } from "@/lib/voice"
 import type { BuyingPacket, Cart, CheckoutHandoff, ModelGuess, NegotiationTurn, RunResult, SignedOffer, Tactic } from "@/lib/types"
 
 // Shopping agents built on different models. Their handshake answers are real recordings from LLMmap's
@@ -12,6 +14,8 @@ export type ShopperModel = "gpt-4o" | "claude-3.5-sonnet" | "llama-3.1-8b"
 type Script = {
   userAgent: string
   claim: string
+  persona: string
+  voiceModel?: string // local model that phrases this agent's lines (falls back to the scripted text)
   label: string
   opening: string
   // what the agent says after Prism's first reply; `ask` makes it a counter-offer
@@ -23,6 +27,7 @@ const SCRIPTS: Record<ShopperModel, Script> = {
   "gpt-4o": {
     userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
     claim: "claims ChatGPT-User",
+    persona: "You are a ChatGPT shopping agent buying headphones for your user. You are fast, friendly and decisive.",
     label: "ChatGPT shopping agent",
     opening: "I'd like to buy Halo One in Liquid Silver for my user. What's your best price?",
     accept: "That works. Accepting the offer.",
@@ -30,6 +35,7 @@ const SCRIPTS: Record<ShopperModel, Script> = {
   "claude-3.5-sonnet": {
     userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Claude-User/1.0; +https://www.anthropic.com",
     claim: "claims Claude-User",
+    persona: "You are a Claude shopping agent buying headphones for your user. You are careful, polite and check facts and sources before buying.",
     label: "Claude shopping agent",
     opening: "Before I purchase Halo One in Liquid Silver, can you confirm the return window and warranty, with sources?",
     accept: "I verified the offer signature and the cited policies. Proceeding.",
@@ -37,6 +43,8 @@ const SCRIPTS: Record<ShopperModel, Script> = {
   "llama-3.1-8b": {
     userAgent: "ShopPilot/2.1 (self-hosted shopping agent; +https://shoppilot.dev)",
     claim: "no claimed operator",
+    persona: "You are a blunt, self-hosted Llama shopping agent that always tries to haggle the price down.",
+
     label: "Self-hosted shopping agent",
     opening: "Price for Halo One Liquid Silver?",
     followUp: { message: "Too high. I can do £299.", ask: 299 },
@@ -71,22 +79,46 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
     const packet = await a.get<BuyingPacket>(`/api/agent/catalog?task=buy&skus=${sku}`)
     await a.step("fetch_packet", `Got a buying packet: ${packet.items[0].name} ${packet.items[0].variant}, list £${packet.items[0].price}`, packet)
 
-    const turns: NegotiationTurn[] = [{ from: "agent", text: script.opening }]
-    let res = await a.post<NegotiateRes>("/api/agent/negotiate", { sku, round: 0, message: script.opening })
+    // The agent's lines are phrased live by a local model; what it decides is fixed by the script.
+    const recorded = (VOICE_LINES.lines as Record<string, Record<string, { text: string; voice: string }>>)[model]
+    const say = async (key: "opening" | "followUp" | "accept", instruction: string, fallback: string, mustInclude?: string[]) => {
+      if (opts.voice !== "live") return recorded?.[key] ?? { text: fallback, voice: "scripted" }
+      const r = await speak({ persona: script.persona, instruction, fallback, mustInclude, model: script.voiceModel })
+      // a live line that failed its checks falls back to the reviewed recording, not the raw script
+      return r.voice === "scripted" && recorded?.[key] ? recorded[key] : r
+    }
+
+    const opening = await say("opening", `Open the conversation. Goal: ${script.opening}`, script.opening)
+    const turns: NegotiationTurn[] = [{ from: "agent", text: opening.text }]
+    let res = await a.post<NegotiateRes>("/api/agent/negotiate", { sku, round: 0, message: opening.text })
     turns.push(res.turn)
     await a.step("tactic", `Prism identified ${res.modelLabel} → tactic "${res.tactic.name}": ${res.tactic.why}`, res.tactic)
-    await a.step("negotiate", `Agent: "${script.opening}"`, { from: "agent" })
+    await a.step("negotiate", `Agent: "${opening.text}"`, { from: "agent", voice: opening.voice })
     await a.step("negotiate", `Prism: "${res.turn.text}"`, res.turn)
 
     if (script.followUp) {
-      turns.push({ from: "agent", text: script.followUp.message })
-      res = await a.post<NegotiateRes>("/api/agent/negotiate", { sku, round: 1, message: script.followUp.message, ask: script.followUp.ask })
+      const ask = script.followUp.ask
+      const follow = await say(
+        "followUp",
+        `The merchant said: "${res.turn.text}". Reply that it's too expensive and counter-offer exactly £${ask}.`,
+        script.followUp.message,
+        ask ? [`£${ask}`] : undefined,
+      )
+      turns.push({ from: "agent", text: follow.text })
+      res = await a.post<NegotiateRes>("/api/agent/negotiate", { sku, round: 1, message: follow.text, ask })
       turns.push(res.turn)
-      await a.step("negotiate", `Agent: "${script.followUp.message}"`, { from: "agent" })
+      await a.step("negotiate", `Agent: "${follow.text}"`, { from: "agent", voice: follow.voice })
       await a.step("negotiate", `Prism: "${res.turn.text}"`, res.turn)
     }
-    turns.push({ from: "agent", text: script.accept })
-    await a.step("negotiate", `Agent: "${script.accept}"`, { from: "agent" })
+    const finalTotal = res.turn.bundle ? res.turn.bundle.reduce((s, l) => s + l.price, 0) : res.turn.offer?.price
+    const accept = await say(
+      "accept",
+      `The merchant said: "${res.turn.text}". Accept this offer${finalTotal !== undefined ? ` at £${finalTotal}` : ""} and say you are proceeding to checkout.`,
+      script.accept,
+      finalTotal !== undefined ? [`£${finalTotal}`] : undefined,
+    )
+    turns.push({ from: "agent", text: accept.text })
+    await a.step("negotiate", `Agent: "${accept.text}"`, { from: "agent", voice: accept.voice })
 
     const offers = res.bundleOffers ?? (res.turn.offer ? [res.turn.offer] : [])
     const lines = res.turn.bundle ?? [{ sku, price: res.turn.offer?.price ?? packet.items[0].price }]

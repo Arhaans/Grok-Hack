@@ -50,7 +50,8 @@ export function pickTactic(identity: AgentIdentity | undefined): { tactic: Tacti
   const best = identity?.modelGuess?.inLibrary ? identity.modelGuess.top[0] : undefined
   const family = best ? familyOfModel(best.model) : identity?.verifiedAs === "grok-shopper" ? "xai" : "other"
   const label = best ? modelLabel(best.model) : identity?.verified ? identity.verifiedAs ?? "verified agent" : "unknown model"
-  if (identity?.impersonation || identity?.intent === "harvest") return { tactic: TACTICS.blocked, family, modelLabel: label }
+  if (identity?.experience === "withheld" || identity?.impersonation || identity?.intent === "harvest")
+    return { tactic: TACTICS.blocked, family, modelLabel: label }
   if (identity?.verified) return { tactic: TACTICS["partner-price"], family, modelLabel: label }
   return { tactic: TACTICS[PLAYBOOK[family] ?? "standard"], family, modelLabel: label }
 }

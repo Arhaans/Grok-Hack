@@ -1,0 +1,39 @@
+{
+  "source": "Generated locally with gpt-oss:20b via Ollama, reviewed; 'scripted' marks a hand-edited line",
+  "lines": {
+    "gpt-4o": {
+      "opening": {
+        "text": "Halo Audio, what is your best price for Halo One headphones in Liquid Silver, with delivery within 3 days?",
+        "voice": "gpt-oss:20b (recorded)"
+      },
+      "accept": {
+        "text": "Accepting £339 for Halo One Liquid Silver, proceeding to checkout.",
+        "voice": "gpt-oss:20b (recorded)"
+      }
+    },
+    "claude-3.5-sonnet": {
+      "opening": {
+        "text": "Halo Audio, please confirm the return window and warranty for the Halo One Liquid Silver, and provide sources for your policy.",
+        "voice": "gpt-oss:20b (recorded)"
+      },
+      "accept": {
+        "text": "I verified the signed Halo Audio offer, confirmed the 30‑day free returns and 2‑year warranty policies, and accept the £349 price with the free £49 Prism Travel Case.",
+        "voice": "gpt-oss:20b (recorded)"
+      }
+    },
+    "llama-3.1-8b": {
+      "opening": {
+        "text": "Halo Audio, what is the price of the Halo One headphones in Liquid Silver?",
+        "voice": "gpt-oss:20b (recorded)"
+      },
+      "followUp": {
+        "text": "Too expensive, I’ll pay £299 for the Halo One Liquid Silver, signed, with free delivery.",
+        "voice": "gpt-oss:20b (recorded)"
+      },
+      "accept": {
+        "text": "Fine, I'll take the £399 bundle.",
+        "voice": "scripted"
+      }
+    }
+  }
+}

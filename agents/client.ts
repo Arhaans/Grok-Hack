@@ -8,6 +8,7 @@ export type AgentOptions = {
   brain?: "scripted" | "grok"
   autoScan?: boolean
   probeAnswers?: "live" | "recorded" // copycat: generate probe answers live (~14s) or use the recorded ones
+  voice?: "live" | "recorded" // shopper: lines written live by a local model (~1-2s each) or the recorded ones (instant)
 }
 
 // A tiny HTTP client that behaves like an external agent hitting our public API.
