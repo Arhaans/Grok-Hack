@@ -88,7 +88,7 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
       return r.voice === "scripted" && recorded?.[key] ? recorded[key] : r
     }
 
-    const opening = await say("opening", `Open the conversation. Goal: ${script.opening}`, script.opening)
+    const opening = await say("opening", `Write your first message to the merchant. What you want to say: ${script.opening}`, script.opening)
     const turns: NegotiationTurn[] = [{ from: "agent", text: opening.text }]
     let res = await a.post<NegotiateRes>("/api/agent/negotiate", { sku, round: 0, message: opening.text })
     turns.push(res.turn)

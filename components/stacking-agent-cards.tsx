@@ -7,7 +7,7 @@ const AGENTS = [
     label: "VERIFIED BUYER",
     title: "High-value lead",
     desc: "A verified shopping agent receives the path most likely to convert: signed price, policy answers, and checkout handoff.",
-    stats: [{ v: "96%", l: "identity score" }, { v: "+$21", l: "lead uplift" }],
+    stats: [{ v: "96%", l: "identity score" }, { v: "+£21", l: "lead uplift" }],
     img: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/researcher-CvhqOuV6irGwBOnJoTGFlXdbyYBRjb.png",
   },
   {

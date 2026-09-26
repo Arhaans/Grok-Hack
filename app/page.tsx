@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react"
 import { IntroAnimation, INTRO_DURATION_MS, HERO_REVEAL_MS } from "@/components/intro-animation"
 import { PixelIcon } from "@/components/pixel-icon"
 import { LiveAgentFeed, LiveAgentCounter } from "@/components/live-agent-feed"
+import { LiveTrail } from "@/components/live-trail"
 import { RevealText } from "@/components/reveal-text"
 import { StackingAgentCards } from "@/components/stacking-agent-cards"
 import { MobileNav } from "@/components/mobile-nav"
@@ -14,7 +15,7 @@ const OUTCOMES = [
     request: "Best checkout-ready offer",
     prism: "Identity verified · Lead 91",
     response: "Signed offer",
-    result: "+$21 lead value over baseline",
+    result: "+£21 lead value over baseline",
     tone: "blue",
     delay: "0s",
   },
@@ -344,7 +345,7 @@ export default function AgenticPage() {
           <div className="flex gap-8 sm:gap-12">
             {[
               { value: "4", label: "Agent identities" },
-              { value: "+$21", label: "Uplift / buyer" },
+              { value: "+£21", label: "Uplift / buyer" },
               { value: "0", label: "Copycats paid" },
             ].map((stat, i) => (
               <div
@@ -550,9 +551,9 @@ export default function AgenticPage() {
                 <div className="bg-black/[0.05] rounded-lg border border-black/[0.07] p-3 font-mono text-[11px] text-black/50 leading-relaxed">
                   <span className="text-black/25">// experience decision</span><br />
                   <span className="text-blue-600/70">if</span>{" (trust > 90 && lead > 80) {"}<br />
-                  {"  "}offer = <span className="text-green-700/70">&apos;signed_11_off&apos;</span><br />
+                  {"  "}experience = <span className="text-green-700/70">&apos;private-offer&apos;</span><br />
                   {"} else if (risk > 70) {"}<br />
-                  {"  "}offer = <span className="text-green-700/70">&apos;withheld_marked&apos;</span><br />
+                  {"  "}experience = <span className="text-green-700/70">&apos;withheld&apos;</span><br />
                   {"})"}
                 </div>
               </div>
@@ -625,27 +626,7 @@ export default function AgenticPage() {
             {/* Right side — live audit log visualization */}
             <BentoCard className="p-6 lg:row-span-1" delay={0}>
               <div className="text-xs text-black/30 tracking-widest uppercase mb-4">Live Agent Trail</div>
-              <div className="space-y-2">
-                {[
-                  { time: "12:34:21", action: "signed_offer_served", status: "success" },
-                  { time: "12:34:18", action: "lead_value_maximized", status: "success" },
-                  { time: "12:34:15", action: "fingerprint_mismatch", status: "success" },
-                  { time: "12:34:12", action: "copycat_marker_planted", status: "success" },
-                  { time: "12:34:09", action: "checkout_domain_verified", status: "success" },
-                ].map((log, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-black/[0.02] hover:bg-black/[0.04] transition-colors border border-black/[0.04] group cursor-pointer"
-                    style={{
-                      animation: `fadeInUp 0.5s cubic-bezier(0.16,1,0.3,1) ${i * 80}ms both`,
-                    }}
-                  >
-                    <span className="text-[10px] text-black/25 font-mono min-w-[60px]">{log.time}</span>
-                    <span className="text-[11px] text-black/50 font-light flex-1">{log.action}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500/60 group-hover:bg-green-500 transition-colors" />
-                  </div>
-                ))}
-              </div>
+              <LiveTrail />
               <style>{`
                 @keyframes fadeInUp {
                   from { opacity: 0; transform: translateY(8px); }

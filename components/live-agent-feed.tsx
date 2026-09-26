@@ -3,36 +3,34 @@
 import { useEffect, useState, useRef } from "react"
 
 const AGENT_NAMES = [
-  "analyst-7f2a", "executor-3b1c", "monitor-9d4e", "researcher-2c8f",
-  "planner-5a3d", "writer-1e9b", "auditor-4f2c", "coder-8d1a",
-  "reviewer-6b3e", "scheduler-0c7f",
+  "grok-shopper ✓", "gpt-4o-shopper", "claude-shopper", "llama-shopper",
+  "research-agent", "chatgpt-user?", "price-watcher", "catalog-crawler",
 ]
 
 const TASKS = [
-  "Reviewing 14 open PRs on main branch",
-  "Summarizing weekly Slack threads",
-  "Generating Q2 financial report",
-  "Running integration test suite",
-  "Scraping competitor pricing data",
-  "Drafting 23 cold emails from CRM",
-  "Parsing inbound invoices → DB",
-  "Monitoring uptime across 8 regions",
-  "Refactoring auth module — 3 files",
-  "Analyzing user churn signals",
-  "Syncing Notion docs with Linear",
-  "Tagging 1,200 support tickets",
-  "Deploying to staging environment",
-  "Processing webhook payloads",
+  "Buying packet served · Halo One £349",
+  "Asked about returns · 30-day policy cited",
+  "First offer accepted · £339 signed",
+  "Evidence requested · warranty + returns sourced",
+  "Haggled £299 → bundle £399",
+  "Comparison matrix · 2 variants × 11 rows",
+  "Fingerprint mismatch · claims ChatGPT, looks like Qwen",
+  "Full-catalog burst · agent pricing withheld",
+  "Clone offer failed signature check",
+  "Checkout handoff · checkout.haloaudio.store",
 ]
 
-const REGIONS = ["us-east", "eu-west", "ap-south", "us-west", "eu-central"]
+const REGIONS = ["private-offer", "negotiated", "public", "withheld"]
 const STATUSES = [
-  { label: "running",  color: "#4ade80" },
-  { label: "running",  color: "#4ade80" },
-  { label: "running",  color: "#4ade80" },
-  { label: "queued",   color: "#facc15" },
-  { label: "complete", color: "#60a5fa" },
+  { label: "buying",   color: "#4ade80" },
+  { label: "buying",   color: "#4ade80" },
+  { label: "research", color: "#60a5fa" },
+  { label: "unknown",  color: "#facc15" },
+  { label: "harvest",  color: "#f87171" },
 ]
+const STATUS_BY_INTENT: Record<string, (typeof STATUSES)[number]> = {
+  buy: STATUSES[0], research: STATUSES[2], unknown: STATUSES[3], harvest: STATUSES[4],
+}
 
 type AgentRow = {
   id: string
@@ -88,16 +86,80 @@ function ProgressBar({ initial }: { initial: number }) {
 
 // Stable seed rows — same on server and client, no random values
 const SEED_ROWS: AgentRow[] = [
-  { id: "A1B2C3", name: "analyst-7f2a",    task: "Generating Q2 financial report",       region: "us-east",    status: STATUSES[0], progress: 42, elapsed: "3m 12s", key: 0 },
-  { id: "D4E5F6", name: "executor-3b1c",   task: "Running integration test suite",       region: "eu-west",    status: STATUSES[0], progress: 67, elapsed: "7m 48s", key: 1 },
-  { id: "G7H8I9", name: "researcher-2c8f", task: "Scraping competitor pricing data",     region: "us-west",    status: STATUSES[3], progress: 18, elapsed: "1m 05s", key: 2 },
-  { id: "J0K1L2", name: "planner-5a3d",    task: "Syncing Notion docs with Linear",      region: "eu-central", status: STATUSES[0], progress: 55, elapsed: "5m 30s", key: 3 },
-  { id: "M3N4O5", name: "coder-8d1a",      task: "Refactoring auth module — 3 files",    region: "ap-south",   status: STATUSES[0], progress: 80, elapsed: "11m 22s", key: 4 },
-  { id: "P6Q7R8", name: "monitor-9d4e",    task: "Monitoring uptime across 8 regions",   region: "us-east",    status: STATUSES[4], progress: 99, elapsed: "14m 01s", key: 5 },
+  { id: "A1B2C3", name: "grok-shopper ✓",  task: "Buying packet served · Halo One £349",         region: "private-offer", status: STATUSES[0], progress: 42, elapsed: "3m 12s", key: 0 },
+  { id: "D4E5F6", name: "gpt-4o-shopper",  task: "First offer accepted · £339 signed",            region: "negotiated",    status: STATUSES[0], progress: 67, elapsed: "7m 48s", key: 1 },
+  { id: "G7H8I9", name: "chatgpt-user?",   task: "Fingerprint mismatch · claims ChatGPT, looks like Qwen", region: "withheld", status: STATUSES[4], progress: 18, elapsed: "1m 05s", key: 2 },
+  { id: "J0K1L2", name: "claude-shopper",  task: "Evidence requested · warranty + returns sourced", region: "negotiated",  status: STATUSES[0], progress: 55, elapsed: "5m 30s", key: 3 },
+  { id: "M3N4O5", name: "research-agent",  task: "Comparison matrix · 2 variants × 11 rows",      region: "public",        status: STATUSES[2], progress: 80, elapsed: "11m 22s", key: 4 },
+  { id: "P6Q7R8", name: "llama-shopper",   task: "Haggled £299 → bundle £399",                    region: "negotiated",    status: STATUSES[0], progress: 99, elapsed: "14m 01s", key: 5 },
 ]
 
+type LiveIdentity = {
+  sessionId: string
+  claimed: string | null
+  verified: boolean
+  intent: string
+  experience?: string
+  requests: number
+  modelGuess?: { top: { model: string }[]; inLibrary: boolean }
+}
+type LiveEvent = { id: number; sessionId: string; summary: string }
+
+function liveName(i: LiveIdentity) {
+  const model = i.modelGuess?.inLibrary ? i.modelGuess.top[0].model.split("/").pop()!.split("-2024")[0] : null
+  const base = (i.claimed ?? "agent").toLowerCase()
+  return (model ? `${base} · ${model}` : base).slice(0, 26) + (i.verified ? " ✓" : "")
+}
+
+// Real sessions from the Prism backend (/api/prism/events). Empty until a demo agent has run.
+function useLiveRows() {
+  const [rows, setRows] = useState<AgentRow[] | null>(null)
+  useEffect(() => {
+    let lastSummary: Record<string, string> = {}
+    let since = 0
+    let stop = false
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/prism/events?since=${since}`, { cache: "no-store" })
+        if (!r.ok) return
+        const s = (await r.json()) as { events: LiveEvent[]; identities: LiveIdentity[] }
+        if (since > 0 && s.events.length === 0 && s.identities.length === 0) lastSummary = {}
+        for (const e of s.events) {
+          since = Math.max(since, e.id)
+          if (e.sessionId !== "prism") lastSummary[e.sessionId] = e.summary
+        }
+        if (!stop && s.identities.length) {
+          setRows(
+            s.identities.slice(0, 6).map((i, k) => ({
+              id: i.sessionId.slice(-6).toUpperCase(),
+              name: liveName(i),
+              task: lastSummary[i.sessionId] ?? `${i.requests} requests`,
+              region: i.experience ?? "public",
+              status: STATUS_BY_INTENT[i.intent] ?? STATUSES[3],
+              progress: Math.min(99, 20 + i.requests * 8),
+              elapsed: "",
+              key: 10000 + k,
+            })),
+          )
+        } else if (!stop && s.identities.length === 0) setRows(null)
+      } catch {
+        // backend not running: keep the illustrative rows
+      }
+    }
+    poll()
+    const t = setInterval(poll, 1500)
+    return () => {
+      stop = true
+      clearInterval(t)
+    }
+  }, [])
+  return rows
+}
+
 export function LiveAgentFeed() {
-  const [rows, setRows] = useState<AgentRow[]>(SEED_ROWS)
+  const [demoRows, setRows] = useState<AgentRow[]>(SEED_ROWS)
+  const liveRows = useLiveRows()
+  const rows = liveRows ?? demoRows
   const [mounted, setMounted] = useState(false)
   const keyRef = useRef(100)
 
@@ -123,12 +185,12 @@ export function LiveAgentFeed() {
       {/* Table header */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "80px 1fr 80px 70px",
+        gridTemplateColumns: "110px 1fr 80px 70px",
         padding: "8px 16px",
         borderBottom: "1px solid rgba(0,0,0,0.06)",
         background: "rgba(0,0,0,0.03)",
       }}>
-        {["AGENT", "TASK", "REGION", "STATUS"].map(h => (
+        {["AGENT", "ACTIVITY", "EXPERIENCE", "INTENT"].map(h => (
           <span key={h} style={{ fontSize: 8, letterSpacing: "0.16em", color: "rgba(0,0,0,0.30)", fontFamily: "monospace" }}>{h}</span>
         ))}
       </div>
@@ -140,7 +202,7 @@ export function LiveAgentFeed() {
             key={row.key}
             style={{
               display: "grid",
-              gridTemplateColumns: "80px 1fr 80px 70px",
+              gridTemplateColumns: "110px 1fr 80px 70px",
               padding: "10px 16px",
               borderBottom: "1px solid rgba(0,0,0,0.04)",
               gap: 8,
@@ -171,8 +233,8 @@ export function LiveAgentFeed() {
               <span style={{
                 width: 5, height: 5, borderRadius: "50%",
                 background: row.status.color,
-                boxShadow: row.status.label === "running" ? `0 0 6px ${row.status.color}` : "none",
-                animation: row.status.label === "running" ? "statusPulse 2s ease-in-out infinite" : "none",
+                boxShadow: row.status.label === "buying" ? `0 0 6px ${row.status.color}` : "none",
+                animation: row.status.label === "buying" ? "statusPulse 2s ease-in-out infinite" : "none",
                 flexShrink: 0,
               }} />
               <span style={{ fontSize: 8, fontFamily: "monospace", color: "rgba(0,0,0,0.35)" }}>{row.status.label}</span>
