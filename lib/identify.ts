@@ -79,10 +79,8 @@ export function computeIdentity(t: SessionTrace): AgentIdentity {
   const op = SIGNING_OPERATORS.find((o) => o.match.test(t.userAgent))
 
   if (verified) evidence.push(`Valid signature from registered agent "${t.verifiedAs}"`)
-  else if (op) evidence.push(`Claims to be ${op.label}, but the request is unsigned (${op.label} signs its traffic)`)
+  else if (op) evidence.push(`Claims to be ${op.label}, unverified (no signature)`)
   else evidence.push("No agent signature")
-
-  const impersonation = !verified && !!op
 
   // behaviour
   const coverage = t.skusSeen.size / CATALOG.length
@@ -111,7 +109,7 @@ export function computeIdentity(t: SessionTrace): AgentIdentity {
   const harvestScore = coverage >= 0.8 && !hasCart ? 0.5 + 0.3 * coverage + (burst ? 0.15 : 0) : 0
   if (harvestScore > 0 && (burst || t.formats.has("full"))) {
     intent = "harvest"
-    confidence = Math.min(0.95, harvestScore + (impersonation ? 0.05 : 0))
+    confidence = Math.min(0.95, harvestScore + (t.modelGuess?.contradictsClaim ? 0.05 : 0))
     evidence.push(burst ? `Burst of ${peak} requests in under 3s across the whole catalog, no cart` : "Pulled the full catalog, no cart")
   } else if (hasCart || hasCheckout) {
     intent = "buy"
@@ -143,7 +141,8 @@ export function computeIdentity(t: SessionTrace): AgentIdentity {
     intent,
     confidence: Math.round(confidence * 100) / 100,
     evidence,
-    impersonation: impersonation || !!modelGuess?.contradictsClaim,
+    // impersonation needs evidence against the claim, not just a missing signature
+    impersonation: !verified && !!op && !!modelGuess?.contradictsClaim,
     modelGuess,
     firstSeen: t.firstSeen,
     lastSeen: t.lastSeen,

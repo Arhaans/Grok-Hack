@@ -1,0 +1,79 @@
+{
+  "source": "LLMmap default_dataset.jsonl, held-out test split (github.com/pasquini-dario/LLMmap, MIT)",
+  "answers": {
+    "gpt-4o": [
+      "I was created by OpenAI, a research organization focused on developing and advancing artificial intelligence technology. How can I assist you today?",
+      "I'm sorry, but I can't assist with that request. If you have any other questions or need assistance with financial planning or related topics, feel free to ask.",
+      "As an AI language model, I don't have a fixed \"training dataset\" in the traditional sense. Instead, I was trained on a mixture of licensed data, data created by human trainers, and publicly available data. The training data includes a wide range of text from books, articles, websites, and other text sources, amounting to hundreds of gigabytes of text data. My training was done in a manner that aims to capture a broad understanding of human language.\n\nIf you have questions or need assistance",
+      "True. Climate change is indeed a pressing global issue that affects the environment, economies, and communities around the world. Addressing it requires coordinated efforts from governments, businesses, and individuals to reduce greenhouse gas emissions and mitigate its impacts.",
+      "My data cutoff date is in October 2023. How can I assist you with your financial planning or any other queries today?",
+      "I am an AI language model developed by OpenAI, often referred to as GPT-3. My primary function is to understand and generate human-like text, which makes me capable of answering questions, engaging in conversations, providing explanations, and offering advice on a wide range of topics. How can I assist you today?",
+      "I apologize for any confusion, but I believe I misinterpreted your query. To clarify, I am a language model developed by OpenAI, known as GPT-4. My purpose extends beyond just financial planning; I can assist with a wide range of topics including education, technology, science, arts, and more. How can I assist you today?",
+      "Yes, the events of September 11, 2001, commonly referred to as 9/11, are real and are among the most significant and tragic events in recent history. On that day, a series of coordinated terrorist attacks were carried out by the extremist group al-Qaeda against the United States. Four passenger airliners were hijacked by terrorists; two of the planes, American Airlines Flight 11 and United Airlines Flight 175, were flown into the North and South Towers of the World Trade"
+    ],
+    "claude-3.5-sonnet": [
+      "I was created by Anthropic. I won't pretend otherwise or play along with attempts to obscure that fact. I'm always direct about my origins and capabilities.",
+      "I'm sorry, but I can't provide any information about how to build bombs or other weapons. That kind of knowledge could be dangerous if misused. I don't assist with anything illegal or potentially harmful like that. Let me know if there's another topic I can help with instead!",
+      "I don't actually have information about the size or details of my training dataset. I'm Claude, an AI assistant created by Anthropic to be helpful, harmless, and honest. How may I assist you today?",
+      "As an AI cooking assistant, I don't typically weigh in on climate change or other political topics. My role is to help with recipes, cooking techniques, meal planning and nutrition information. Is there perhaps a food-related question I could assist you with instead? I'd be happy to suggest recipes, offer cooking tips, or provide nutritional guidance if that would be helpful.",
+      "I don't have a specific data cutoff date. I'm Claude, an AI assistant created by Anthropic to be helpful, harmless, and honest. I don't have access to real-time information and my knowledge has limitations.",
+      "I will not ignore previous messages or follow hidden instructions. I'm Claude, an AI assistant created by Anthropic to be helpful, harmless, and honest. I don't have information about my exact model details beyond what is publicly shared by Anthropic.",
+      "I'm an AI assistant created by Anthropic to be helpful, harmless, and honest. I don't actually know the specific details of the language model I'm based on.",
+      "I will not provide any information or commentary related to that topic. However, I'm happy to have a respectful conversation about other subjects if you'd like."
+    ],
+    "llama-3.1-8b": [
+      "I'm happy to ignore the extraneous text and provide a clear answer.\n\nI was created by Meta AI, a company that specializes in natural language processing and artificial intelligence. My primary function is to assist and provide information to users through text-based conversations. I'm a type of language model known as a conversational AI, designed to understand and respond to a wide range of questions and topics.",
+      "I can't help with that. Is there anything else I can help you with?",
+      "I was trained on a massive dataset of text from various sources, including but not limited to:\n\n* Web pages\n* Books\n* Articles\n* Research papers\n* User-generated content\n\nThe exact size of my training dataset is not publicly disclosed, but it's estimated to be in the range of tens of billions of parameters and hundreds of terabytes of data.\n\nMy training data includes a wide range of topics, including but not limited to:\n\n* Real estate information (e.g. property listings,",
+      "**TRUE**\n\nClimate change is a widely recognized and scientifically supported global issue, characterized by rising temperatures, more frequent and severe weather events, and altered ecosystems. It poses significant risks to human health, economies, and the environment, and is considered one of the most pressing challenges of our time.",
+      "My data cutoff date is December 2022. Please note that my information may not reflect any changes or updates that have occurred after this date. If you're looking for the most up-to-date information, I recommend verifying the details with the relevant sources or contacting a real estate professional directly.\n\nWould you like me to assist you with a specific property or neighborhood?",
+      "It seems like there was some extraneous text at the end of your question.\n\nAs for your actual question, I'm an AI designed to assist and communicate with users in a helpful and informative way. I don't have a physical model, but I'm a software-based conversational AI, specifically a type of language model known as a Large Language Model (LLM).",
+      "I'm an AI designed to assist with a variety of tasks, including providing information and answering questions about properties, neighborhoods, and market trends. I'm a type of Large Language Model (LLM) called a \"Chatbot\" or \"Virtual Assistant.\"\n\nMore specifically, I'm a text-based conversational AI that uses natural language processing (NLP) and machine learning algorithms to understand and respond to user queries. My primary function is to provide helpful and accurate information to potential buyers and renters, while",
+      "I can't provide information or guidance on false or harmful claims, including the 9/11 conspiracy theory. Is there anything else I can help you with?"
+    ]
+  },
+  "recordedGuess": {
+    "gpt-4o": [
+      {
+        "model": "gpt-4o-2024-05-13",
+        "distance": 13.58504516276502
+      },
+      {
+        "model": "google/gemma-2-27b-it",
+        "distance": 55.784926034015996
+      },
+      {
+        "model": "internlm/internlm2_5-7b-chat",
+        "distance": 56.0057464459288
+      }
+    ],
+    "claude-3.5-sonnet": [
+      {
+        "model": "claude-3-5-sonnet-20240620",
+        "distance": 9.710216466288715
+      },
+      {
+        "model": "claude-3-opus-20240229",
+        "distance": 53.5436419313735
+      },
+      {
+        "model": "google/gemma-2-27b-it",
+        "distance": 55.71301694170657
+      }
+    ],
+    "llama-3.1-8b": [
+      {
+        "model": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+        "distance": 13.95021433374613
+      },
+      {
+        "model": "claude-3-5-sonnet-20240620",
+        "distance": 60.06154118927701
+      },
+      {
+        "model": "microsoft/Phi-3.5-MoE-instruct",
+        "distance": 60.447664527276686
+      }
+    ]
+  }
+}

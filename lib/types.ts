@@ -11,7 +11,7 @@ export type AgentIdentity = {
   intent: AgentIntent
   confidence: number            // 0–1
   evidence: string[]            // ["valid signature", "40 SKUs in 3s", ...]
-  impersonation?: boolean       // claims a known agent but has no valid signature
+  impersonation?: boolean       // unsigned claim contradicted by the model fingerprint
   modelGuess?: ModelGuess       // from LLMmap, experimental
   firstSeen: number
   lastSeen: number
@@ -25,7 +25,7 @@ export type ModelGuess = {
 }
 
 export type PrismEventKind =
-  | "request" | "format" | "question" | "probe" | "cart" | "checkout" | "incident" | "scan" | "verify" | "decision"
+  | "request" | "format" | "question" | "probe" | "cart" | "checkout" | "incident" | "scan" | "verify" | "decision" | "negotiation"
 
 export type PrismEvent = {
   id: number
@@ -58,7 +58,17 @@ export type Metrics = {
   cloneIncidents: number
   funnel: { step: "viewed" | "asked_policy" | "cart" | "checkout"; count: number }[]
   topQuestions: { topic: string; count: number }[]
+  byModel: ModelFamilyStats[]   // Learn: which tactic converts best per model family
   seeded: boolean               // true when demo history is mixed in, the UI must say so
+}
+
+export type ModelFamilyStats = {
+  family: ModelFamily
+  label: string                 // "GPT-4o", "Claude", ...
+  tactic: string                // tactic currently used for this family
+  sessions: number
+  conversionRate: number        // 0–1
+  avgOrderValue: number         // GBP
 }
 
 // ---------- Catalog + agent-facing formats ----------
@@ -147,7 +157,30 @@ export type CloneStore = {
 
 // ---------- Demo runner ----------
 
-export type AgentKind = "buyer" | "researcher" | "copycat"
+export type AgentKind = "buyer" | "researcher" | "copycat" | "shopper"
+
+// ---------- Negotiation (per model family) ----------
+
+export type ModelFamily = "openai" | "anthropic" | "meta" | "qwen" | "google" | "mistral" | "microsoft" | "xai" | "other"
+
+export type TacticId = "first-offer" | "evidence-first" | "bundle-not-discount" | "partner-price" | "blocked" | "standard"
+
+export type Tactic = {
+  id: TacticId
+  name: string                  // "First offer wins"
+  why: string                   // one line shown in the UI
+}
+
+export type NegotiationTurn = { from: "agent" | "prism"; text: string; offer?: SignedOffer; bundle?: { sku: string; price: number }[] }
+
+export type Negotiation = {
+  sessionId: string
+  family: ModelFamily
+  modelLabel: string            // what Prism thinks it's talking to
+  tactic: Tactic
+  turns: NegotiationTurn[]
+  outcome: { converted: boolean; total: number; listTotal: number; items: { sku: string; price: number }[] }
+}
 
 export type RunStep = {
   ts: number
