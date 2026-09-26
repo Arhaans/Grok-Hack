@@ -326,7 +326,7 @@ export function DemoStory() {
   const currentReady = current ? ready[current.id] : false
   useEffect(() => {
     if (!auto || !current || chapter >= last || !currentReady) return
-    const dwell = current.id === "identify" ? 3500 : current.id === "negotiate" ? 4000 : 5500
+    const dwell = current.id === "identify" ? 4500 : current.id === "negotiate" ? 5000 : 6500
     const t = setTimeout(() => setChapter((c) => Math.min(last, c + 1)), dwell)
     return () => clearTimeout(t)
   }, [auto, current, chapter, last, currentReady])
@@ -358,6 +358,8 @@ export function DemoStory() {
         @keyframes storyShine { from { background-position: 0% 50% } to { background-position: 200% 50% } }
         @keyframes storyDot { 0%,100% { opacity: .25; transform: translateY(0) } 50% { opacity: 1; transform: translateY(-2px) } }
         @keyframes storyTick { from { transform: scale(0) } 60% { transform: scale(1.25) } to { transform: scale(1) } }
+        @keyframes strikeDraw { from { width: 0 } to { width: 100% } }
+        @keyframes problemFade { from { font-size: 30px; color: rgba(0,0,0,.88) } to { font-size: 20px; color: rgba(0,0,0,.4) } }
       `}</style>
 
       <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
@@ -513,11 +515,18 @@ export function DemoStory() {
                   </div>
                   {current.problem ? (
                     <>
+                      {/* 1. the problem, full size → 2. a red line strikes it out → 3. the fix blurs in */}
                       <div className="mt-3 flex items-baseline gap-3">
-                        <span className="w-24 shrink-0 text-[10px] uppercase tracking-widest text-red-600/70">Without Prism</span>
-                        <span className="text-xl font-light text-black/45 line-through decoration-red-400/50 decoration-1">{current.title}</span>
+                        <span className="w-24 shrink-0 text-[10px] uppercase tracking-widest text-red-600/80">Without Prism</span>
+                        <span className="relative inline-block font-light" style={{ animation: "problemFade .7s cubic-bezier(0.16,1,0.3,1) 1.25s both" }}>
+                          {current.title}
+                          <span
+                            className="absolute left-0 top-[55%] h-[2px] rounded-full bg-red-500"
+                            style={{ animation: "strikeDraw .55s cubic-bezier(0.65,0,0.35,1) .75s both" }}
+                          />
+                        </span>
                       </div>
-                      <div className="mt-1 flex items-baseline gap-3">
+                      <div className="mt-1 flex items-baseline gap-3" style={{ animation: "storyIn .9s cubic-bezier(0.16,1,0.3,1) 1.55s both" }}>
                         <span className="w-24 shrink-0 text-[10px] uppercase tracking-widest text-emerald-700">With Prism</span>
                         <span className="text-3xl font-light tracking-tight text-black/90">{current.fix}</span>
                       </div>
@@ -528,11 +537,17 @@ export function DemoStory() {
                       <div className="mt-1 text-lg font-light text-emerald-700">→ {current.fix}</div>
                     </>
                   )}
-                  {current.line && <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-black/50">{current.line}</p>}
+                  {current.line && (
+                    <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-black/50" style={current.problem ? { animation: "storyIn .8s cubic-bezier(0.16,1,0.3,1) 1.9s both" } : undefined}>
+                      {current.line}
+                    </p>
+                  )}
                 </div>
               </Appear>
             )}
 
+            {/* slide content lands after the problem → strike → fix sequence */}
+            <div key={`content-${current?.id ?? "none"}`} style={current?.problem ? { animation: "storyIn .9s cubic-bezier(0.16,1,0.3,1) 2.1s both" } : undefined}>
             {/* ① identify */}
             {current?.id === "identify" && (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -831,6 +846,7 @@ export function DemoStory() {
                 </Appear>
               </div>
             )}
+            </div>
           </div>
         </div>
 
