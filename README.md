@@ -6,6 +6,8 @@ Prism tells your store which AI model is shopping, gives each agent its own expe
 
 Built at the **[Grok Bot Commerce London Hackathon](https://luma.com/cursor-td9f)** · 26 Sep 2026 · Fleek HQ, London.
 
+![Prism: every agent gets its own experience](docs/images/prism-hero.png)
+
 ---
 
 ## The problem
@@ -24,6 +26,8 @@ But a signature only says *who runs* the agent. ChatGPT's key directory says `ch
 | **Learn** | Conversion and order value per model family, drop-off funnel, top questions (`GET /api/prism/metrics`). |
 
 ## The demo
+
+![The Prism demo: slide 2, a unique, optimal offer for every agent, next to the live store](docs/images/prism-demo.png)
 
 `/` is the Prism site: an animated hero, then the demo. On the left, a slideshow built around the **three problems** (a tracker ticks each one off); on the right, the real **Prism Skincare** store, which has Prism installed (agent discovery at `/.well-known/ucp` points to Prism; an optional `<script src="/prism.js">` adds a trust badge for humans) and turns into the red copycat outlet on the copycat slides.
 
