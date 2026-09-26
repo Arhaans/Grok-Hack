@@ -50,6 +50,32 @@ Start runs every agent once: slides 1–2 stream live, and everything else is co
 
 Every step streams to the page as it happens. Each chat line is labelled live or recorded, and each agent card shows the protocol calls it made: `Prism handshake → get_product → POST /checkout-sessions → complete · spt_… · order_created`.
 
+## Live lab (`/live`): nothing scripted
+
+![Live lab: a real Qwen agent identified and negotiating with Claude Sonnet](docs/images/prism-live-lab.png)
+
+A real AI agent shops the store while you watch. Pick the buyer (**Llama 3.2 3B** or **Qwen 2.5 3B**, running on this laptop via Ollama), pick how Prism sells (or let Prism pick), press **Go live**:
+
+1. **Discover:** the agent finds the store's endpoints at `/.well-known/ucp`.
+2. **Handshake:** the agent's own model answers Prism's 8 probes.
+3. **Fingerprint:** LLMmap predicts the model, with a confidence margin. A "reveal" button shows whether it was right.
+4. **Tactic:** Prism picks the tactic that converted best for that model in live runs (or a safe default if unsure).
+5. **Negotiate:** a real, unscripted chat. The buyer has a secret budget and decides for itself; **Claude Sonnet** sells knowing only Prism's prediction. Prices are checked against hard rules (serum never below list).
+6. **Checkout:** a real UCP checkout session with signed prices, ending in an order.
+
+Real agents can and do walk away. In testing, both models were identified correctly every time, and 3 of 4 runs sold at $87 with the serum at full price.
+
+**What we learned from 36 live negotiations** (sales out of 3 · average revenue; Claude Sonnet as seller, $90 secret budget):
+
+| Tactic | Llama 3.2 3B | Qwen 2.5 3B |
+|---|---|---|
+| First offer (bundle) | 3/3 · $87 | 3/3 · $88 |
+| Evidence first | 3/3 · $68 | 3/3 · $68 |
+| Anchor high ($185 set) | **0/3 · $0** | **3/3 · $74** |
+| One flat price | 1/3 · $22 | 3/3 · $61 |
+
+The same tactic can win on one model and lose every sale on another, which is why Prism identifies the model first. Fingerprinting depends on how the agent is prompted: answering the handshake as itself, both models are identified confidently.
+
 ## How a purchase flows (real protocols + Prism)
 
 ```
@@ -103,6 +129,8 @@ The store (`stores/prism-skincare`, React + Vite) is built into `public/store`. 
 
 ```
 app/page.tsx                 hero + the demo story
+app/live/page.tsx            live lab: real buyer agent vs Claude seller, streamed
+lib/live.ts                  the live run (handshake, fingerprint, tactic, negotiation, checkout)
 components/demo-story.tsx    one-button story: store frame, "Prism sees" panel, streamed chats, trace, results
 public/prism.js              optional trust badge for human shoppers (agents don't run page JS)
 app/.well-known/ucp          agent discovery profile: routes every agent to Prism's endpoints (the install)

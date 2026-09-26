@@ -10,12 +10,12 @@ const MODEL = process.env.PRISM_SELLER_MODEL || "sonnet"
 const ENABLED = process.env.PRISM_SELLER !== "off"
 const TIMEOUT_MS = Number(process.env.PRISM_SELLER_TIMEOUT_MS || 12000)
 
-function ask(system: string, prompt: string): Promise<string> {
+export function claudeRaw(system: string, prompt: string, timeoutMs = TIMEOUT_MS): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
       CLAUDE_BIN,
       ["-p", "--model", MODEL, "--no-session-persistence", "--strict-mcp-config", "--setting-sources", "", "--tools", "", "--system-prompt", system, prompt],
-      { timeout: TIMEOUT_MS, cwd: "/tmp", env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "prism-seller" } },
+      { timeout: timeoutMs, cwd: "/tmp", env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "prism-seller" } },
       (err, stdout) => (err ? reject(err) : resolve(stdout.trim())),
     )
   })
@@ -45,7 +45,7 @@ export async function sellerSay(opts: {
     `Write 1-2 short sentences (max 40 words), warm and confident. You MUST state exactly this total price: $${price}. ` +
     `Never invent other prices, discounts, products or policies. No emojis, no markdown.`
   try {
-    const text = (await ask(system, `Shopping agent said: "${opts.agentMessage ?? "Hello"}"`)).split("\n").filter(Boolean).join(" ")
+    const text = (await claudeRaw(system, `Shopping agent said: "${opts.agentMessage ?? "Hello"}"`)).split("\n").filter(Boolean).join(" ")
     if (!text || text.length > 320 || !text.includes(`$${price}`)) return fallback
     return { text, voice: `claude ${MODEL} (subscription)` }
   } catch {

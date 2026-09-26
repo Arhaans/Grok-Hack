@@ -93,3 +93,35 @@ export async function ollamaAnswers(model: string, questions: string[], system: 
     }),
   )
 }
+
+// One chat turn with a local Ollama model (optionally forcing JSON output).
+export async function ollamaChat(
+  model: string,
+  messages: { role: "system" | "user" | "assistant"; content: string }[],
+  opts: { json?: boolean; temperature?: number; timeoutMs?: number } = {},
+): Promise<string> {
+  const r = await fetch(`${OLLAMA_URL}/api/chat`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      model,
+      stream: false,
+      keep_alive: "30m",
+      messages,
+      ...(opts.json ? { format: "json" } : {}),
+      options: { temperature: opts.temperature ?? 0.7, num_predict: 220 },
+    }),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 60000),
+  })
+  if (!r.ok) throw new Error(`ollama ${r.status}`)
+  return String((await r.json()).message?.content ?? "")
+}
+
+export async function ollamaModels(): Promise<string[]> {
+  try {
+    const r = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(3000) })
+    return ((await r.json()).models ?? []).map((m: { name: string }) => m.name)
+  } catch {
+    return []
+  }
+}
