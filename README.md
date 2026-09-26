@@ -58,6 +58,8 @@ XAI_API_KEY=...                         # Grok makes the buyer's final decision 
 XAI_MODEL=                              # optional, auto-picked from your xAI account if empty
 PRISM_SIGNING_SECRET=...                # signs merchant offers
 FINGERPRINT_URL=http://localhost:8765   # LLMmap sidecar (optional)
+PRISM_VOICE=off                         # optional: disable the local Ollama voice entirely
+PRISM_VOICE_MODEL=llama3.2:3b           # optional: model for &voice=live (needs `ollama pull llama3.2:3b`)
 ```
 
 ### LLMmap fingerprint sidecar (optional)
@@ -235,6 +237,27 @@ const research: RunResult = await (await fetch("/api/demo/run?agent=researcher",
 `GET /api/agent/catalog?task=buy|research&format=packet|matrix|full&family=halo&skus=A,B` · `GET /api/agent/policy?topic=returns|shipping|warranty` · `GET /api/agent/handshake` · `POST /api/prism/probe` · `POST /api/agent/cart` · `POST /api/agent/checkout` · `POST /api/agent/verify-offer`
 
 **Demo store:** Halo Audio (`haloaudio.store`), hero product **Halo One** in *Liquid Silver* (£349, 2-day delivery) and *Graphite* (£329, 4-day, 3 left), plus buds, case, stand and cable. Edit `lib/catalog.ts` to change it. The clone is **Halo Audio Outlet** (`halo-audio-outlet.shop`), 20% cheaper with no returns.
+
+## Building the shop clone (Antonio)
+
+The demo runs inside a real-looking shop: **Halo Audio** (`lib/catalog.ts`: Halo One in Liquid Silver £349 / Graphite £329, buds, case, stand, cable; images in `public/images`). Build it as normal pages that read the catalog, then add a demo control panel that fires agents at it.
+
+**Before the demo:** `POST /api/demo/warmup` (primes the fingerprint sidecar and voice model), then `POST /api/prism/reset`.
+
+**Demo buttons → calls** (add `&pace=600` so steps arrive at watchable speed; `pace=0` is instant):
+
+| Button | Call | Show |
+|---|---|---|
+| Lineup | 3× in parallel: `POST /api/demo/run?agent=shopper&model=gpt-4o` / `claude-3.5-sonnet` / `llama-3.1-8b` | Three agent cards → fingerprint → tactic chip → chat bubbles → final price (£339 / £349 + free case / £399 bundle) |
+| Copycat | `POST /api/demo/run?agent=copycat&probeAnswers=recorded` | Impostor card (claims ChatGPT, fingerprint Qwen) → evil-twin shop from `GET /api/clone` → glowing line from `incident.copiedSnippet` to the source session |
+| Verified buyer | `POST /api/demo/run?agent=buyer` | Finds the clone's cheaper offer, signature check fails, buys from Halo Audio |
+| Researcher | `POST /api/demo/run?agent=researcher` | Comparison matrix |
+
+**Every identity now has scores and an experience** (`lib/types.ts`): `scores: { trust, lead, risk }` (0–100) and `experience`: `private-offer` (trust > 90 && lead > 80), `withheld` (risk > 70), `negotiated`, or `public`. These are the numbers from the landing page's "experience decision" snippet, so show them as meters on the agent cards.
+
+**Agent chat lines:** by default the shoppers use lines written by `gpt-oss:20b` on this Mac and reviewed (instant, reliable). `&voice=live` has `llama3.2:3b` write them live via Ollama (~1.5 s per shopper), falling back to the recorded line if a live one goes off-script. `gpt-oss:20b` isn't used live because it takes 12 GB of RAM and slows the fingerprinting from 0.3 s to 15 s. Each agent line's step has `data.voice` saying which was used.
+
+The landing page's **Live Agent Trail** and **live feed** already poll `/api/prism/events` and switch from the illustrative rows to real agents as soon as one runs.
 
 ---
 
