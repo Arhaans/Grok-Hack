@@ -36,7 +36,7 @@ A beam of light enters a prism and splits into agent spectra.
 | 🔵 Blue | Buying agent | The product breaks apart into a buying packet (SKU, stock, delivery, returns). The agent compares two variants and builds a real cart. |
 | 🟣 Violet | Research agent | The *same* catalog becomes a side-by-side evidence matrix |
 | 🔴 Red | Copycat | A harvesting agent claims to be ChatGPT, but has no signature and its probe answers fingerprint as a different model. It scrapes the catalog, and an evil-twin store appears with a changed price. Prism draws a glowing line from the copied marker back to the exact session that took it. |
-| 🤝 Lineup | Three shopping agents: GPT-4o, Claude, Llama | Prism fingerprints each one and negotiates differently: GPT-4o takes a £339 first offer, Claude gets sourced evidence and a free case at £349, Llama haggles and leaves with a £399 bundle. |
+| 🤝 Lineup | Three shopping agents: GPT-4o, Claude, Llama | Prism fingerprints each one and negotiates differently: GPT-4o takes a $64 first offer on the $68 serum, Claude gets clinical evidence and a free sample trio at $68, Llama haggles for $55 and leaves with a $100 serum + cleansing balm bundle. |
 
 **The finale:** the buying agent checks both stores, sees that the clone's offers aren't signed by the merchant and its checkout is on the wrong domain, rejects it, and completes checkout with the real store.
 
@@ -86,7 +86,7 @@ Pages
 
 API
   GET  /api/agent/catalog      format adapts to the agent: buying packet or comparison matrix
-  GET  /api/agent/policy?topic=  returns | shipping | warranty (logged as a "question" for Learn)
+  GET  /api/agent/policy?topic=  returns | shipping | ingredients (logged as a "question" for Learn)
   GET  /api/agent/handshake    8 probe questions for agents that talk back
   POST /api/agent/negotiate    Prism's reply, tactic chosen by model family (signed offers)
   POST /api/agent/cart         build a cart
@@ -144,7 +144,7 @@ export type PrismEvent = {
   sessionId: string
   kind: "request" | "format" | "question" | "probe" | "cart" | "checkout" | "incident" | "scan"
   summary: string
-  data?: unknown                // for "question": { topic: "returns" | "shipping" | "warranty" }
+  data?: unknown                // for "question": { topic: "returns" | "shipping" | "ingredients" }
 }
 
 export type Metrics = {
@@ -234,23 +234,27 @@ const research: RunResult = await (await fetch("/api/demo/run?agent=researcher",
 
 **Agent-facing API** (what bots call; you mostly won't need these directly)
 
-`GET /api/agent/catalog?task=buy|research&format=packet|matrix|full&family=halo&skus=A,B` · `GET /api/agent/policy?topic=returns|shipping|warranty` · `GET /api/agent/handshake` · `POST /api/prism/probe` · `POST /api/agent/cart` · `POST /api/agent/checkout` · `POST /api/agent/verify-offer`
+`GET /api/agent/catalog?task=buy|research&format=packet|matrix|full&family=barrier-repair-serum&skus=A,B` · `GET /api/agent/policy?topic=returns|shipping|ingredients` · `GET /api/agent/handshake` · `POST /api/prism/probe` · `POST /api/agent/cart` · `POST /api/agent/checkout` · `POST /api/agent/verify-offer`
 
-**Demo store:** Halo Audio (`haloaudio.store`), hero product **Halo One** in *Liquid Silver* (£349, 2-day delivery) and *Graphite* (£329, 4-day, 3 left), plus buds, case, stand and cable. Edit `lib/catalog.ts` to change it. The clone is **Halo Audio Outlet** (`halo-audio-outlet.shop`), 20% cheaper with no returns.
+**Demo store:** Prism Skincare (`prismskincare.com`), served at `/store`. Hero product **The Botanical Barrier Repair Serum** in 50ml ($68, 2-day delivery) and 30ml ($48, 4-day, 3 left), plus cleansers, creams, oils and a set. The catalog is read straight from the store's own `stores/prism-skincare/src/data/products.js`. The clone is **Prism Skincare Outlet** (`prism-skincare-outlet.shop`), 20% cheaper with no returns, shown at `/store?clone=1`.
 
-## Building the shop clone (Antonio)
+## The demo store (Prism Skincare)
 
-The demo runs inside a real-looking shop: **Halo Audio** (`lib/catalog.ts`: Halo One in Liquid Silver £349 / Graphite £329, buds, case, stand, cable; images in `public/images`). Build it as normal pages that read the catalog, then add a demo control panel that fires agents at it.
+The demo runs on **Prism Skincare**, a real-looking React + Vite skincare shop in `stores/prism-skincare`. It's built into this app at **`/store`** (`pnpm store:build` after changing it; the build in `public/store` is committed so `pnpm dev` just works).
 
-**Before the demo:** `POST /api/demo/warmup` (primes the fingerprint sidecar and voice model), then `POST /api/prism/reset`.
+- **One-line install:** its `index.html` has `<script src="/prism.js" defer></script>`, which adds the "Prism · agent-ready · N agents identified" badge. That's the pitch: one line and the store is agent-ready.
+- **Copycat outlet:** `/store?clone=1` renders the same shop from the data the copycat scraped: lower prices, "all sales final", fake checkout domain, red bar.
+- **Homepage demo:** `components/demo-stage.tsx` (the `#demo` section under the hero) shows the store in an iframe, the demo buttons, live agent cards with trust/lead/risk, the negotiation chats and the copycat incident. The outlet iframe appears next to the real store after the copycat runs.
 
-**Demo buttons → calls** (add `&pace=600` so steps arrive at watchable speed; `pace=0` is instant):
+**Before the demo:** `POST /api/demo/warmup` (the demo section does this on load), then **Reset**.
 
-| Button | Call | Show |
+**Demo buttons → calls** (`pace=600` so steps arrive at watchable speed; `pace=0` is instant):
+
+| Button | Call | Shows |
 |---|---|---|
-| Lineup | 3× in parallel: `POST /api/demo/run?agent=shopper&model=gpt-4o` / `claude-3.5-sonnet` / `llama-3.1-8b` | Three agent cards → fingerprint → tactic chip → chat bubbles → final price (£339 / £349 + free case / £399 bundle) |
-| Copycat | `POST /api/demo/run?agent=copycat&probeAnswers=recorded` | Impostor card (claims ChatGPT, fingerprint Qwen) → evil-twin shop from `GET /api/clone` → glowing line from `incident.copiedSnippet` to the source session |
-| Verified buyer | `POST /api/demo/run?agent=buyer` | Finds the clone's cheaper offer, signature check fails, buys from Halo Audio |
+| Send 3 shopping agents | 3× in parallel: `POST /api/demo/run?agent=shopper&model=gpt-4o` / `claude-3.5-sonnet` / `llama-3.1-8b` | Agent cards → tactic chip → chat → $64 / $68 + free sample trio / $100 bundle |
+| Send a copycat | `POST /api/demo/run?agent=copycat&probeAnswers=recorded` | Impostor card (claims ChatGPT, fingerprint Qwen, risk 100) → outlet iframe → "Copycat traced" card |
+| Send verified buyer | `POST /api/demo/run?agent=buyer` | Signed Grok Shopper (trust 96, private offer) rejects the outlet's offer and buys from Prism Skincare |
 | Researcher | `POST /api/demo/run?agent=researcher` | Comparison matrix |
 
 **Every identity now has scores and an experience** (`lib/types.ts`): `scores: { trust, lead, risk }` (0–100) and `experience`: `private-offer` (trust > 90 && lead > 80), `withheld` (risk > 70), `negotiated`, or `public`. These are the numbers from the landing page's "experience decision" snippet, so show them as meters on the agent cards.
