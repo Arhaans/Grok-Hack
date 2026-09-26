@@ -33,7 +33,7 @@ type Story = {
 
 const PROBLEMS = [
   { n: 1, short: "Who's shopping?", solved: "Every agent identified" },
-  { n: 2, short: "One offer for everyone", solved: "An experience per agent" },
+  { n: 2, short: "One offer for everyone", solved: "An optimal offer per agent" },
   { n: 3, short: "Copycats", solved: "Stopped before copying" },
 ]
 
@@ -41,36 +41,36 @@ const CHAPTERS = [
   {
     id: "identify",
     problem: 1,
-    title: "You can't see who's shopping",
-    fix: "Prism fingerprints every agent",
+    title: "Stores can't see which AI is shopping",
+    fix: "Prism identifies the model behind every agent",
     line: "A signature only names the operator. Prism's 8-question handshake reveals the model behind each agent, including a Llama running on this laptop.",
   },
   {
     id: "negotiate",
     problem: 2,
-    title: "Every agent gets the same offer",
-    fix: "Prism builds each agent its own experience",
-    line: "Each agent's search becomes its context. Prism picks what to show it and how to sell to its model, and never discounts what it came for: it grows the basket or adds value instead.",
+    title: "Every agent gets the same generic offer",
+    fix: "A unique, optimal offer for every agent",
+    line: "Prism reads what each agent is shopping for and which model it is, then builds its own offer: what to show, how to sell, what to bundle. It never discounts the product the agent came for, so every sale is worth at least the list price.",
   },
   {
     id: "copycat",
     problem: 3,
-    title: "A copycat walks in",
+    title: "Copycat agents scrape your store",
     fix: "Stopped before it copies anything",
     line: "It claims to be ChatGPT; its answers say Qwen. Exposed at the handshake, so the gate closes before a single product leaves.",
   },
   {
     id: "noclone",
     problem: 3,
-    title: "It tries to clone your store",
+    title: "…then open a cheaper clone of it",
     fix: "Nothing to copy, so no clone",
     line: "No catalog, no prices, no signed offers. And if a scraper ever copies your human pages, every listing carries an invisible marker that traces it and flags it to every agent.",
   },
   {
     id: "buyer",
     problem: 3,
-    title: "Real buyers stay yours",
-    fix: "No cheaper fake to lose them to",
+    title: "Buyers get lured to the fake",
+    fix: "Real buyers stay yours",
     line: "A signed buyer agent gets its private offer and buys from the real store. There is no outlet undercutting you.",
   },
   { id: "results", problem: 0, title: "Three problems, solved", fix: "One line to install", line: "" },
@@ -511,8 +511,23 @@ export function DemoStory() {
                   <div className="text-[10px] uppercase tracking-[0.25em] text-black/40">
                     {current.problem ? `Problem ${current.problem} · slide ${chapter + 1} of ${CHAPTERS.length}` : `Slide ${chapter + 1} of ${CHAPTERS.length}`}
                   </div>
-                  <div className="mt-2 text-3xl font-light tracking-tight text-black/90">{current.title}</div>
-                  <div className="mt-1 text-lg font-light text-emerald-700">→ {current.fix}</div>
+                  {current.problem ? (
+                    <>
+                      <div className="mt-3 flex items-baseline gap-3">
+                        <span className="w-24 shrink-0 text-[10px] uppercase tracking-widest text-red-600/70">Without Prism</span>
+                        <span className="text-xl font-light text-black/45 line-through decoration-red-400/50 decoration-1">{current.title}</span>
+                      </div>
+                      <div className="mt-1 flex items-baseline gap-3">
+                        <span className="w-24 shrink-0 text-[10px] uppercase tracking-widest text-emerald-700">With Prism</span>
+                        <span className="text-3xl font-light tracking-tight text-black/90">{current.fix}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mt-2 text-3xl font-light tracking-tight text-black/90">{current.title}</div>
+                      <div className="mt-1 text-lg font-light text-emerald-700">→ {current.fix}</div>
+                    </>
+                  )}
                   {current.line && <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-black/50">{current.line}</p>}
                 </div>
               </Appear>
@@ -775,7 +790,7 @@ export function DemoStory() {
                   },
                   {
                     n: 2,
-                    t: "An experience per agent",
+                    t: "An optimal offer per agent",
                     k: [
                       { v: revenue, l: "revenue from agents", prefix: "$" },
                       { v: revenue - flatRevenue, l: "vs one flat price", prefix: "+$" },
