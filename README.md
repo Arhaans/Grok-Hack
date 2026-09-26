@@ -25,17 +25,22 @@ But a signature only says *who runs* the agent. ChatGPT's key directory says `ch
 
 ## The demo
 
-`/` is the Prism site: an animated hero, then **one big frame with the demo store, Prism Skincare**, which has Prism installed with one line (`<script src="/prism.js">`). Press **▶ Start the story**, then step through the slides with **◀ Back / Next ▶**, the arrow keys, the chapter tabs, or **Auto**:
+`/` is the Prism site: an animated hero, then the demo. On the left, a slideshow built around the **three problems** (a tracker ticks each one off); on the right, the real **Prism Skincare** store, which has Prism installed with one line (`<script src="/prism.js">`) and turns into the red copycat outlet on the copycat slides.
 
-1. **Real shoppers arrive.** A ChatGPT agent, a Claude agent and a Llama agent. Prism fingerprints each and negotiates differently: GPT takes a signed $64 first offer, Claude gets clinical evidence and a free sample trio at $68, Llama haggles for $55 and leaves with a $100 bundle.
-2. **A copycat arrives.** It claims to be ChatGPT, but its fingerprint says Qwen. Flagged as an impostor: no prices, no signed offers, and Prism refuses its scraping burst. The public listings it grabbed first are secretly marked.
-3. **It clones the store.** The frame turns into *prism-skincare-outlet.shop*: lower prices, all sales final, its own checkout.
-4. **Prism traces it.** A glowing line runs from the copied text on the outlet to the visit that took it.
-5. **Prism stops it.** Blocked at the door; nothing signed to sell with (every outlet offer is forged); its domain is flagged to every agent that checks an offer. One click downloads the takedown evidence.
-6. **The real buyer can't be fooled.** A signed Grok Shopper finds the cheaper outlet; the check fails ("flagged by Prism as a traced copycat", forged signature, wrong checkout domain); it buys from the real store.
-7. **Results.** Agents identified, revenue, scraping requests refused, copycat traced and flagged, sales lost to the clone: 0.
+Press **▶ Start the story**. It **auto-plays**; the moment you touch **◀ Back / Next ▶**, a slide dot, a problem tab or an arrow key, it switches to **manual** (click "resume" to go back to auto).
 
-Pressing Start runs every agent once: slide 1 streams live, and everything else is computed in the background, so you can move back and forth freely.
+| # | Problem | Slide | What Prism does |
+|---|---|---|---|
+| 1 | ① You can't see who's shopping | Every agent identified | Fingerprints GPT-4o, Claude 3.5 Sonnet and a Llama 3.2 running on this laptop; trust / lead / risk per agent |
+| 2 | ② Every agent gets the same offer | A deal per model | GPT takes a signed $64 first offer, Claude gets evidence + a free gift at $68, Llama haggles for $55 and takes a $100 bundle: **$232 vs $136 at one flat price** |
+| 3 | ③ Copycats | A copycat walks in | Claims ChatGPT, fingerprint says Qwen → impostor: $0 prices, 0 signed offers, 10 scraping requests refused |
+| 4 | ③ | It clones your store anyway | The store frame turns into *prism-skincare-outlet.shop*: lower prices, all sales final, forged offers |
+| 5 | ③ | Prism traces it | A glowing line from the copied text to the exact visit |
+| 6 | ③ | Prism stops it | Blocked at the door, nothing signed to sell with, domain flagged to every agent; download the takedown evidence |
+| 7 | ③ | Real buyers can't be fooled | A signed Grok Shopper rejects the outlet ("flagged by Prism as a traced copycat") and buys from the real store. The clone makes $0 |
+| 8 | ✓ | Three problems, solved | One row per problem, all from one line of install |
+
+Start runs every agent once: slides 1–2 stream live, and everything else is computed in the background, so you can move back and forth freely.
 
 **Two modes** (switch next to the Play button):
 - **Replay (default):** recorded answers and replies. Instant, the same every time, and each chapter lasts 5 seconds at most.
