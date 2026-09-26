@@ -62,6 +62,11 @@ export function makeAgent(kind: AgentKind, opts: AgentOptions, identity: { userA
     get: <T>(path: string) => call<T>("GET", path),
     post: <T>(path: string, payload: unknown) => call<T>("POST", path, payload),
     put: <T>(path: string, payload: unknown) => call<T>("PUT", path, payload),
+    // Look the store up the way UCP agents do: /.well-known/ucp → endpoint URLs (paths on this origin)
+    discover: async () => {
+      const m = await call<{ served_by: string; services: { catalog: { search: string } } }>("GET", "/.well-known/ucp")
+      return { servedBy: m.served_by, catalog: new URL(m.services.catalog.search).pathname }
+    },
     // Shared Payment Token the agent's platform delegated for this purchase (Stripe SPT, simulated)
     spt: () => "spt_" + randomUUID().replace(/-/g, "").slice(0, 24),
     step,

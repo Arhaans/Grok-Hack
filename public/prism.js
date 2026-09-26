@@ -1,5 +1,5 @@
-// Prism storefront snippet: the one line a merchant adds (<script src="/prism.js" defer>).
-// Shows that the store is agent-ready and how many AI agents Prism has identified.
+// Prism trust badge for human shoppers (optional): <script src="/prism.js" defer>.
+// Agents never run page JavaScript; they reach Prism through the store's /.well-known/ucp discovery profile.
 ;(function () {
   if (new URLSearchParams(location.search).has("clone")) return // copycats don't get Prism
   var el = document.createElement("a")

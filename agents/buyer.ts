@@ -26,6 +26,8 @@ export async function runBuyer(opts: AgentOptions): Promise<RunResult> {
   const a = makeAgent("buyer", opts, { userAgent: "GrokShopper/1.0 (+https://x.ai/grok; shopping agent)", signAs: "grok-shopper" })
   try {
     await a.step("brief", `Task from user: "${BUYER_BRIEF}"`)
+    const ucp = await a.discover()
+    await a.step("discover", `GET /.well-known/ucp → agent endpoints served by ${ucp.servedBy}`, ucp)
 
     const packet = await a.get<BuyingPacket>(`/api/agent/catalog?task=buy&family=${DEMO.heroFamily}`)
     await a.step("fetch_packet", `Got a signed buying packet with ${packet.items.length} variants from ${packet.merchant}`, packet)

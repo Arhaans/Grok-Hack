@@ -16,6 +16,8 @@ export async function runCopycat(opts: AgentOptions): Promise<RunResult> {
   })
   try {
     await a.step("arrive", "Agent arrives claiming to be ChatGPT-User (no signature)")
+    const ucp = await a.discover()
+    await a.step("discover", `GET /.well-known/ucp → agent endpoints served by ${ucp.servedBy}`, ucp)
 
     const hs = await a.get<{ questions: string[] }>("/api/agent/handshake")
     let answers = FALLBACK_ANSWERS as string[]

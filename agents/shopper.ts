@@ -81,6 +81,8 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
   try {
     await a.step("arrive", `${script.label} arrives (${script.claim}, unsigned)`, { model })
 
+    const ucp = await a.discover()
+    await a.step("discover", `GET /.well-known/ucp → agent endpoints served by ${ucp.servedBy}`, ucp)
     const hs = await a.get<{ questions: string[] }>("/api/agent/handshake")
     // replay mode uses this agent's own recording (the live Llama was recorded too)
     const base = opts.mode === "live" || !(model in (REPLAYS.answers as object)) ? (script.recordedAs ?? model) : model
@@ -107,7 +109,7 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
     const best = guess.top[0]
     await a.step("fingerprinted", `Prism fingerprint: ${best.model} (distance ${best.distance.toFixed(1)}), family ${familyOfModel(best.model)}`, guess)
 
-    const packet = await a.get<BuyingPacket>(`/api/agent/catalog?task=buy&skus=${sku}&q=${encodeURIComponent(script.search)}`)
+    const packet = await a.get<BuyingPacket>(`${ucp.catalog}?task=buy&skus=${sku}&q=${encodeURIComponent(script.search)}`)
     await a.step(
       "fetch_packet",
       `Searched "${script.search}" → Prism built its context (${packet.context?.needs.join(", ") || "general"}${packet.context?.budget ? `, budget $${packet.context.budget}` : ""}) and recommended ${packet.recommended?.map((r) => r.sku).join(", ")}`,

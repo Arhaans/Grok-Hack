@@ -25,7 +25,7 @@ But a signature only says *who runs* the agent. ChatGPT's key directory says `ch
 
 ## The demo
 
-`/` is the Prism site: an animated hero, then the demo. On the left, a slideshow built around the **three problems** (a tracker ticks each one off); on the right, the real **Prism Skincare** store, which has Prism installed with one line (`<script src="/prism.js">`) and turns into the red copycat outlet on the copycat slides.
+`/` is the Prism site: an animated hero, then the demo. On the left, a slideshow built around the **three problems** (a tracker ticks each one off); on the right, the real **Prism Skincare** store, which has Prism installed (agent discovery at `/.well-known/ucp` points to Prism; an optional `<script src="/prism.js">` adds a trust badge for humans) and turns into the red copycat outlet on the copycat slides.
 
 Press **▶ Start the story**. It **auto-plays**; the moment you touch **◀ Back / Next ▶**, a slide dot, a problem tab or an arrow key, it switches to **manual** (click "resume" to go back to auto).
 
@@ -36,7 +36,7 @@ Press **▶ Start the story**. It **auto-plays**; the moment you touch **◀ Bac
 | 3 | ③ Copycats | Stopped before it copies anything | Claims ChatGPT, fingerprint says Qwen → impostor → gate closed: 0 products, $0 prices, 0 signed offers, 10 requests refused |
 | 4 | ③ | Nothing to copy, so no clone | The outlet launch fails with 0 products; the invisible markers are the backup for anything scraped from human pages |
 | 5 | ③ | Real buyers stay yours | A signed Grok Shopper finds no cheaper fake, verifies the signed offer, buys at full price |
-| 6 | ✓ | Three problems, solved | One row per problem, all from one line of install |
+| 6 | ✓ | Three problems, solved | One row per problem, from one integration |
 
 Start runs every agent once: slides 1–2 stream live, and everything else is computed in the background, so you can move back and forth freely.
 
@@ -100,7 +100,8 @@ The store (`stores/prism-skincare`, React + Vite) is built into `public/store`. 
 ```
 app/page.tsx                 hero + the demo story
 components/demo-story.tsx    one-button story: store frame, "Prism sees" panel, streamed chats, trace, results
-public/prism.js              the one-line storefront install (badge + live agent count)
+public/prism.js              optional trust badge for human shoppers (agents don't run page JS)
+app/.well-known/ucp          agent discovery profile: routes every agent to Prism's endpoints (the install)
 stores/prism-skincare/       the demo store (catalog source of truth); /store?clone=1 = copycat outlet
 
 app/api/agent/*              agent-facing API: catalog, policy, handshake, negotiate, verify-offer

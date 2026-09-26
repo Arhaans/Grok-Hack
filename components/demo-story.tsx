@@ -73,7 +73,7 @@ const CHAPTERS = [
     fix: "Real buyers stay yours",
     line: "A signed buyer agent gets its private offer and buys from the real store. There is no outlet undercutting you.",
   },
-  { id: "results", problem: 0, title: "Three problems, solved", fix: "One line to install", line: "" },
+  { id: "results", problem: 0, title: "Three problems, solved", fix: "One integration, humans see the same store", line: "" },
 ] as const
 type ChapterId = (typeof CHAPTERS)[number]["id"]
 
@@ -225,7 +225,7 @@ export function DemoStory() {
 
   const onShopperStep = (i: number) => (st: RunStep) => {
     const d = (st.data ?? {}) as Record<string, unknown>
-    const call = ({ handshake: "Prism handshake", fetch_packet: "get_product", cart: "POST /checkout-sessions", checkout: "complete · spt_… · order_created" } as Record<string, string>)[st.step]
+    const call = ({ discover: "/.well-known/ucp", handshake: "Prism handshake", fetch_packet: "get_product", cart: "POST /checkout-sessions", checkout: "complete · spt_… · order_created" } as Record<string, string>)[st.step]
     if (call) updateShopper(i, (x) => ({ ...x, protocol: [...x.protocol, call] }))
     if (st.step === "fingerprinted") {
       const g = d as unknown as ModelGuess
@@ -841,7 +841,8 @@ export function DemoStory() {
                 ))}
                 <Appear delay={700}>
                   <div className="rounded-xl bg-black px-5 py-4 text-[14px] text-white/80">
-                    All of it from one line on the store: <span className="font-mono text-emerald-300">&lt;script src=&quot;/prism.js&quot;&gt;</span>
+                    One integration: connect your catalog and point agent discovery at Prism{" "}
+                    <span className="font-mono text-emerald-300">/.well-known/ucp → Prism</span>. Agents go through Prism; humans see the same store.
                   </div>
                 </Appear>
               </div>
