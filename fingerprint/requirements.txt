@@ -1,0 +1,5 @@
+# LLMmap's own requirements (vendor/LLMmap/requirements.txt) plus what it forgot and the web server
+-r vendor/LLMmap/requirements.txt
+accelerate
+fastapi
+uvicorn
