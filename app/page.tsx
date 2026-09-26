@@ -2,13 +2,50 @@
 
 import React, { useRef, useEffect, useState, useCallback } from "react"
 import { IntroAnimation, INTRO_DURATION_MS, HERO_REVEAL_MS } from "@/components/intro-animation"
-import { AgentInterface } from "@/components/agent-interface"
 import { PixelIcon } from "@/components/pixel-icon"
 import { LiveAgentFeed, LiveAgentCounter } from "@/components/live-agent-feed"
 import { RevealText } from "@/components/reveal-text"
 import { StackingAgentCards } from "@/components/stacking-agent-cards"
 import { MobileNav } from "@/components/mobile-nav"
-import { DevExSection } from "@/components/devex-section"
+
+const OUTCOMES = [
+  {
+    label: "Verified buyer",
+    request: "Best checkout-ready offer",
+    prism: "Identity verified · Lead 91",
+    response: "Signed offer",
+    result: "+$21 lead value over baseline",
+    tone: "blue",
+    delay: "0s",
+  },
+  {
+    label: "Research agent",
+    request: "Compare variants and policies",
+    prism: "Identity known · Lead 58",
+    response: "Comparison packet",
+    result: "Lead captured, margin intact",
+    tone: "violet",
+    delay: "1.8s",
+  },
+  {
+    label: "Unknown crawler",
+    request: "Full catalog and lowest price",
+    prism: "Identity weak · Lead 12",
+    response: "Public price only",
+    result: "No private path leaked",
+    tone: "stone",
+    delay: "3.6s",
+  },
+  {
+    label: "Copycat",
+    request: "Claims ChatGPT, harvests SKUs",
+    prism: "Identity spoofed · LLMmap mismatch",
+    response: "Offer blocked",
+    result: "Copycat stopped: C-1842",
+    tone: "red",
+    delay: "5.4s",
+  },
+]
 
 // ─── Intersection Observer hook ──────────────────────────────────────────────
 function useInView(threshold = 0.15) {
@@ -72,6 +109,157 @@ function Tag({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] tracking-widest font-sans text-black/40 bg-black/[0.04]">
       {children}
     </span>
+  )
+}
+
+function AgentOutcomeSection() {
+  const tone = {
+    blue: {
+      chip: "bg-blue-50 text-blue-700 border-blue-200",
+      dot: "bg-blue-500",
+      glow: "rgba(37,99,235,0.22)",
+    },
+    violet: {
+      chip: "bg-violet-50 text-violet-700 border-violet-200",
+      dot: "bg-violet-500",
+      glow: "rgba(124,58,237,0.18)",
+    },
+    stone: {
+      chip: "bg-stone-100 text-stone-650 border-stone-200",
+      dot: "bg-stone-500",
+      glow: "rgba(120,113,108,0.18)",
+    },
+    red: {
+      chip: "bg-red-50 text-red-700 border-red-200",
+      dot: "bg-red-500",
+      glow: "rgba(220,38,38,0.22)",
+    },
+  } as const
+
+  return (
+    <section id="agent-outcomes" className="py-32 px-6 md:px-12 lg:px-20 border-t border-black/[0.06] overflow-hidden">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-16">
+          <div>
+            <PixelIcon type="workflow" size={40} />
+            <div className="mt-4"><Tag>LIVE OUTCOMES</Tag></div>
+            <RevealText className="mt-5 text-4xl md:text-5xl font-light tracking-tight leading-[1.05]">
+              {"Every agent gets\na unique experience."}
+            </RevealText>
+          </div>
+          <p className="text-sm text-black/45 leading-relaxed max-w-sm">
+            Prism gives each agent an identity, creates the right experience, maximizes lead value, and stops copycats.
+          </p>
+        </div>
+
+        <BentoCard className="p-4 md:p-6" delay={0}>
+          <div className="relative min-h-[620px] overflow-hidden rounded-2xl border border-black/[0.06] bg-[#faf9f7] md:min-h-[520px]">
+            <img
+              src="/images/arc.png"
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-cover opacity-70"
+              style={{ objectPosition: "center 70%" }}
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(250,249,247,0.94)_0%,rgba(250,249,247,0.82)_42%,rgba(250,249,247,0.94)_100%)]" />
+
+            <svg className="absolute inset-0 hidden h-full w-full md:block" viewBox="0 0 1100 520" fill="none" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M210 260 C330 260 390 260 510 260" stroke="rgba(0,0,0,0.12)" strokeWidth="1.5" />
+              <path d="M590 260 C710 120 780 92 930 88" stroke="rgba(37,99,235,0.34)" strokeWidth="1.5" />
+              <path d="M590 260 C710 210 780 196 930 194" stroke="rgba(124,58,237,0.3)" strokeWidth="1.5" />
+              <path d="M590 260 C710 315 780 322 930 326" stroke="rgba(120,113,108,0.28)" strokeWidth="1.5" />
+              <path d="M590 260 C710 420 780 432 930 438" stroke="rgba(220,38,38,0.34)" strokeWidth="1.5" />
+            </svg>
+
+            <div className="absolute left-1/2 top-1/2 z-10 grid h-24 w-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-2xl border border-white/70 bg-white/70 text-sm tracking-widest text-black/55 shadow-xl" style={{ backdropFilter: "blur(22px)" }}>
+              PRISM
+            </div>
+
+            <div className="relative z-10 grid min-h-[620px] grid-cols-1 gap-5 p-5 md:min-h-[520px] md:grid-cols-[230px_1fr_310px] md:p-8">
+              <div className="flex items-center">
+                <div className="w-full rounded-2xl border border-black/[0.07] bg-white/75 p-5 shadow-lg shadow-black/5" style={{ backdropFilter: "blur(18px)" }}>
+                  <div className="text-[10px] tracking-widest text-black/30 uppercase">Incoming</div>
+                  <h3 className="mt-3 text-2xl font-light">Agent traffic</h3>
+                  <p className="mt-3 text-sm leading-6 text-black/42">Same product. Different identity, intent, and risk.</p>
+                  <div className="mt-5 flex -space-x-2">
+                    {OUTCOMES.map((item) => {
+                      const style = tone[item.tone as keyof typeof tone]
+                      return <span key={item.label} className={`h-8 w-8 rounded-full border-2 border-white ${style.dot}`} />
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative hidden md:block">
+                {OUTCOMES.map((item, index) => {
+                  const style = tone[item.tone as keyof typeof tone]
+                  const positions = [
+                    { left: "15%", top: "49%", x: "360px", y: "-172px" },
+                    { left: "15%", top: "49%", x: "360px", y: "-66px" },
+                    { left: "15%", top: "49%", x: "360px", y: "66px" },
+                    { left: "15%", top: "49%", x: "360px", y: "178px" },
+                  ][index]
+                  return (
+                    <span
+                      key={item.label}
+                      className={`absolute h-3 w-3 rounded-full ${style.dot} shadow-lg`}
+                      style={{
+                        left: positions.left,
+                        top: positions.top,
+                        animation: "edgePulse 4.8s cubic-bezier(0.16,1,0.3,1) infinite",
+                        animationDelay: item.delay,
+                        "--pulse-x": positions.x,
+                        "--pulse-y": positions.y,
+                      } as React.CSSProperties}
+                    />
+                  )
+                })}
+              </div>
+
+              <div className="grid gap-3 md:grid-rows-4">
+                {OUTCOMES.map((item) => {
+                  const style = tone[item.tone as keyof typeof tone]
+                  return (
+                    <div
+                      key={item.label}
+                      className="relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white/76 p-4 shadow-lg shadow-black/5"
+                      style={{
+                        background: `radial-gradient(circle at 100% 0%, ${style.glow}, transparent 38%), rgba(255,255,255,0.72)`,
+                        backdropFilter: "blur(18px)",
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className={`inline-flex rounded-lg border px-2.5 py-1 text-[10px] tracking-widest ${style.chip}`}>
+                            {item.response}
+                          </div>
+                          <h3 className="mt-2 text-lg font-light">{item.label}</h3>
+                          <p className="mt-1 text-xs leading-5 text-black/38">{item.prism}</p>
+                        </div>
+                        <span className={`mt-1 h-2.5 w-2.5 rounded-full ${style.dot}`} />
+                      </div>
+                      <div className="mt-3 rounded-xl border border-black/[0.05] bg-black/[0.025] px-3 py-2">
+                        <div className="text-[10px] tracking-widest text-black/25 uppercase">Ending</div>
+                        <div className="mt-1 text-sm font-light text-black/70">{item.result}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <style>{`
+              @keyframes edgePulse {
+                0% { opacity: 0; transform: translate(0, 0) scale(0.75); filter: blur(4px); }
+                12% { opacity: 1; filter: blur(0); }
+                62% { opacity: 1; transform: translate(var(--pulse-x), var(--pulse-y)) scale(1); filter: blur(0); }
+                100% { opacity: 0; transform: translate(var(--pulse-x), var(--pulse-y)) scale(0.75); filter: blur(4px); }
+              }
+            `}</style>
+          </div>
+        </BentoCard>
+      </div>
+    </section>
   )
 }
 
@@ -149,15 +337,15 @@ export default function AgenticPage() {
               transition: "opacity 1s cubic-bezier(0.16,1,0.3,1) 0ms, filter 1s cubic-bezier(0.16,1,0.3,1) 0ms, transform 1s cubic-bezier(0.16,1,0.3,1) 0ms",
             }}
           >
-            Build &amp;<br />orchestrate AI<br />agents while<br />you sleep.
+            Every agent<br />gets its own<br />experience.
           </h1>
 
           {/* 3 metrics — staggered after title */}
           <div className="flex gap-8 sm:gap-12">
             {[
-              { value: "50M+", label: "Tasks" },
-              { value: "99.9%", label: "Uptime" },
-              { value: "180+", label: "Countries" },
+              { value: "4", label: "Agent identities" },
+              { value: "+$21", label: "Uplift / buyer" },
+              { value: "0", label: "Copycats paid" },
             ].map((stat, i) => (
               <div
                 key={i}
@@ -181,9 +369,9 @@ export default function AgenticPage() {
         <div className="max-w-6xl mx-auto">
           <div className="mb-16">
             <PixelIcon type="platform" size={40} />
-            <div className="mt-4"><Tag>PLATFORM</Tag></div>
+            <div className="mt-4"><Tag>PRISM</Tag></div>
             <RevealText className="mt-5 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-[1.05]">
-              {"Everything you need\nto ship agents."}
+              {"Identify agents.\nMaximize leads."}
             </RevealText>
           </div>
 
@@ -217,9 +405,9 @@ export default function AgenticPage() {
                 <div className="w-10 h-10 rounded-xl border border-black/10 bg-white/60 flex items-center justify-center mb-6" style={{ backdropFilter: "blur(8px)" }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="m4.93 4.93 2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>
                 </div>
-                <h3 className="text-xl font-light mb-3">Visual Agent Builder</h3>
+                <h3 className="text-xl font-light mb-3">Agent Identity Layer</h3>
                 <p className="text-sm text-black/45 leading-relaxed max-w-sm">
-                  Drag, connect, and configure agents through an intuitive graph editor. No boilerplate. Ship in minutes, not days.
+                  Give every AI shopper an identity, then serve the experience most likely to convert without helping copycats.
                 </p>
               </div>
             </BentoCard>
@@ -229,24 +417,24 @@ export default function AgenticPage() {
               <div className="w-10 h-10 rounded-xl border border-black/10 flex items-center justify-center mb-5">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               </div>
-              <h3 className="text-lg font-light mb-2">Real-time Monitoring</h3>
-              <p className="text-sm text-black/45 leading-relaxed">Trace every decision. Debug with full execution history and live logs.</p>
+              <h3 className="text-lg font-light mb-2">Identify</h3>
+              <p className="text-sm text-black/45 leading-relaxed">Use signatures, behaviour, and model fingerprints to tell which agent is visiting.</p>
             </BentoCard>
 
             <BentoCard className="col-span-12 md:col-span-4 p-8 min-h-[200px]" delay={160}>
               <div className="w-10 h-10 rounded-xl border border-black/10 flex items-center justify-center mb-5">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 10h8M8 14h5"/></svg>
               </div>
-              <h3 className="text-lg font-light mb-2">Memory & Context</h3>
-              <p className="text-sm text-black/45 leading-relaxed">Persistent long-term memory across sessions. Agents learn from every interaction.</p>
+              <h3 className="text-lg font-light mb-2">Maximize Leads</h3>
+              <p className="text-sm text-black/45 leading-relaxed">Give buyers offers, researchers evidence, and high-intent agents fewer reasons to drop.</p>
             </BentoCard>
 
             <BentoCard className="col-span-12 md:col-span-4 p-8 min-h-[200px]" delay={200}>
               <div className="w-10 h-10 rounded-xl border border-black/10 flex items-center justify-center mb-5">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               </div>
-              <h3 className="text-lg font-light mb-2">Guardrails & Permissions</h3>
-              <p className="text-sm text-black/45 leading-relaxed">Define what agents can and cannot do. Fine-grained access control per tool.</p>
+              <h3 className="text-lg font-light mb-2">Stop Copycats</h3>
+              <p className="text-sm text-black/45 leading-relaxed">Withhold private routes from risky agents and trace copied catalog data.</p>
             </BentoCard>
           </div>
         </div>
@@ -258,13 +446,13 @@ export default function AgenticPage() {
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-16">
             <div>
               <PixelIcon type="agents" size={40} />
-              <div className="mt-4"><Tag>AGENT TYPES</Tag></div>
+              <div className="mt-4"><Tag>AGENT TRAFFIC</Tag></div>
               <RevealText className="mt-5 text-4xl md:text-5xl font-light tracking-tight leading-[1.05]">
-                {"Plug-and-play agents\nready to deploy."}
+                {"Buyers, researchers,\nand copycats split."}
               </RevealText>
             </div>
             <p className="text-sm text-black/45 leading-relaxed max-w-xs">
-              Start with a pre-built agent or compose your own from primitives. Every agent is versioned, testable, and observable.
+              Each agent gets an identity. Valuable agents get the path most likely to convert. Copycats get blocked, marked, and traced.
             </p>
           </div>
 
@@ -277,18 +465,18 @@ export default function AgenticPage() {
         <div className="max-w-6xl mx-auto">
           <div className="mb-16">
             <PixelIcon type="workflow" size={40} />
-            <div className="mt-4"><Tag>WORKFLOW</Tag></div>
+            <div className="mt-4"><Tag>ROUTING RULES</Tag></div>
             <RevealText className="mt-5 text-4xl md:text-5xl font-light tracking-tight leading-[1.05]">
-              {"From idea to running agent\nin four steps."}
+              {"From agent identity\nto lead outcome."}
             </RevealText>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3" onMouseMove={handleMouse}>
             {[
-              { n: "01", title: "Define",  desc: "Describe your agent in plain language. Set objectives, tools, and boundaries.", delay: 0,   img: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/define-5aafAmGBrxZpOqJ3XLHY3n3qzC2I5K.png" },
-              { n: "02", title: "Compose", desc: "Chain agents together in the visual editor. Wire triggers, conditions, and outputs.", delay: 80,  img: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/compose-5RT5VR4f1Y3GoFmovqTKLTG4UXp3g2.png" },
-              { n: "03", title: "Test",    desc: "Run sandboxed simulations. Inspect every decision in the execution trace.", delay: 140, img: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/test-zm8guZwxJHtwWsJ7XO4B0CF7GzlNK8.png" },
-              { n: "04", title: "Deploy",  desc: "Push globally in one click. Agents auto-scale, self-heal, and report back.", delay: 200, img: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/deploy-an8fgHSLzniojkcmRyGGIFQUJF9T5J.png" },
+              { n: "01", title: "Identify",  desc: "Recognize signed buyers, research agents, unknown crawlers, and spoofed claims.", delay: 0,   img: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/define-5aafAmGBrxZpOqJ3XLHY3n3qzC2I5K.png" },
+              { n: "02", title: "Score", desc: "Combine identity, buying intent, margin rules, and LLMmap-style behavioural fingerprints.", delay: 80,  img: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/compose-5RT5VR4f1Y3GoFmovqTKLTG4UXp3g2.png" },
+              { n: "03", title: "Personalize",    desc: "Serve a signed discount, comparison packet, public price, or withheld response.", delay: 140, img: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/test-zm8guZwxJHtwWsJ7XO4B0CF7GzlNK8.png" },
+              { n: "04", title: "Optimize",  desc: "Measure which agents reach cart, accept offers, drop off, or expose clone risk.", delay: 200, img: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/deploy-an8fgHSLzniojkcmRyGGIFQUJF9T5J.png" },
             ].map((step) => (
               <BentoCard key={step.n} className="relative overflow-hidden flex flex-col min-h-[320px]" delay={step.delay}>
                 {/* Image at top — mask fades it out strongly before the bottom edge */}
@@ -324,13 +512,13 @@ export default function AgenticPage() {
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-16">
             <div>
               <PixelIcon type="integrations" size={40} />
-              <div className="mt-4"><Tag>INTEGRATIONS</Tag></div>
+              <div className="mt-4"><Tag>CONSOLE</Tag></div>
               <RevealText className="mt-5 text-4xl md:text-5xl font-light tracking-tight leading-[1.05]">
-                {"Connect any tool.\nControl any system."}
+                {"See every identity.\nGrow every lead."}
               </RevealText>
             </div>
             <p className="text-sm text-black/45 leading-relaxed max-w-xs">
-              200+ native connectors. Everything from Slack to your internal database. Build custom tools with our SDK in minutes.
+              Merchant analytics for agent commerce: identity, lead score, experience served, margin rule, and checkout result.
             </p>
           </div>
 
@@ -356,15 +544,15 @@ export default function AgenticPage() {
                   background: "rgba(255,255,255,0.60)",
                 }}
               >
-                <Tag>SDK</Tag>
-                <h3 className="mt-3 text-lg font-light mb-2">Build custom tools</h3>
-                <p className="text-xs text-black/45 leading-relaxed mb-4">Define any function as a tool your agents can call. TypeScript and Python.</p>
+                <Tag>RULE</Tag>
+                <h3 className="mt-3 text-lg font-light mb-2">Personalize by identity</h3>
+                <p className="text-xs text-black/45 leading-relaxed mb-4">Only identified, high-intent agents receive private pricing and checkout handoffs.</p>
                 <div className="bg-black/[0.05] rounded-lg border border-black/[0.07] p-3 font-mono text-[11px] text-black/50 leading-relaxed">
-                  <span className="text-black/25">// tool definition</span><br />
-                  <span className="text-blue-600/70">defineTool</span>{"({"}<br />
-                  {"  "}<span className="text-amber-700/70">name</span>: <span className="text-green-700/70">&apos;fetchPrice&apos;</span>,<br />
-                  {"  "}<span className="text-amber-700/70">run</span>: <span className="text-black/35">async (q) </span>={">"}<br />
-                  {"    "}<span className="text-blue-600/70">api</span>.get(q)<br />
+                  <span className="text-black/25">// experience decision</span><br />
+                  <span className="text-blue-600/70">if</span>{" (trust > 90 && lead > 80) {"}<br />
+                  {"  "}offer = <span className="text-green-700/70">&apos;signed_11_off&apos;</span><br />
+                  {"} else if (risk > 70) {"}<br />
+                  {"  "}offer = <span className="text-green-700/70">&apos;withheld_marked&apos;</span><br />
                   {"})"}
                 </div>
               </div>
@@ -379,9 +567,9 @@ export default function AgenticPage() {
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500/80 animate-pulse" />
-                  <span className="text-xs text-black/40 tracking-widest">LIVE API</span>
+                  <span className="text-xs text-black/40 tracking-widest">LIVE SIGNAL</span>
                 </div>
-                <p className="text-sm text-black/45">Full REST + WebSocket API. Stream agent outputs directly into your product.</p>
+                <p className="text-sm text-black/45">Verified buyer received a high-value path. Copycat was stopped and traced.</p>
               </div>
             </div>
           </div>
@@ -393,9 +581,9 @@ export default function AgenticPage() {
         <div className="max-w-6xl mx-auto">
           <div className="mb-16">
             <PixelIcon type="platform" size={40} />
-            <div className="mt-4"><Tag>SECURITY</Tag></div>
+            <div className="mt-4"><Tag>PROTECTION</Tag></div>
             <RevealText className="mt-5 text-4xl md:text-5xl font-light tracking-tight leading-[1.05]">
-              {"Enterprise-grade\nfrom day one."}
+              {"Copycats never\nget the good path."}
             </RevealText>
           </div>
 
@@ -404,14 +592,14 @@ export default function AgenticPage() {
             {/* Left side — descriptions */}
             <div className="space-y-6">
               <p className="text-sm text-black/45 leading-relaxed">
-                Every action is logged, every decision is traceable. Built for teams that need compliance without compromise.
+                Prism withholds premium experiences from suspicious agents, watermarks responses, and traces copied catalog data back to the exact session.
               </p>
 
               <div className="space-y-4">
                 {[
-                  { label: "SOC 2 Type II", desc: "Independently audited security controls" },
-                  { label: "Full Audit Trail", desc: "Every decision logged with full traceability" },
-                  { label: "Real-time Observability", desc: "Monitor, debug, and replay any execution" },
+                  { label: "Identity-Gated Offers", desc: "Signed prices and checkout links cannot be forged by clone stores" },
+                  { label: "Fingerprint Evidence", desc: "LLMmap-style probes flag model-family mismatches and spoofed claims" },
+                  { label: "Clone Provenance", desc: "Invisible response markers connect copied listings to source sessions" },
                 ].map((item) => (
                   <div key={item.label} className="flex gap-4">
                     <div className="w-1 bg-black/10 rounded-full shrink-0" />
@@ -425,7 +613,7 @@ export default function AgenticPage() {
 
               {/* Compliance badges — vertical stack */}
               <div className="pt-4 flex flex-col gap-2">
-                {["SOC 2", "GDPR", "HIPAA Ready", "ISO 27001"].map((badge) => (
+                {["SIGNED OFFERS", "MODEL HINTS", "SESSION MARKERS", "BAD DOMAIN CHECK"].map((badge) => (
                   <div key={badge} className="flex items-center gap-2 text-xs text-black/25">
                     <span className="w-1 h-1 rounded-full bg-black/25" />
                     {badge}
@@ -436,14 +624,14 @@ export default function AgenticPage() {
 
             {/* Right side — live audit log visualization */}
             <BentoCard className="p-6 lg:row-span-1" delay={0}>
-              <div className="text-xs text-black/30 tracking-widest uppercase mb-4">Live Audit Trail</div>
+              <div className="text-xs text-black/30 tracking-widest uppercase mb-4">Live Agent Trail</div>
               <div className="space-y-2">
                 {[
-                  { time: "12:34:21", action: "agent_executed", status: "success" },
-                  { time: "12:34:18", action: "decision_logged", status: "success" },
-                  { time: "12:34:15", action: "tool_called", status: "success" },
-                  { time: "12:34:12", action: "memory_updated", status: "success" },
-                  { time: "12:34:09", action: "output_generated", status: "success" },
+                  { time: "12:34:21", action: "signed_offer_served", status: "success" },
+                  { time: "12:34:18", action: "lead_value_maximized", status: "success" },
+                  { time: "12:34:15", action: "fingerprint_mismatch", status: "success" },
+                  { time: "12:34:12", action: "copycat_marker_planted", status: "success" },
+                  { time: "12:34:09", action: "checkout_domain_verified", status: "success" },
                 ].map((log, i) => (
                   <div
                     key={i}
@@ -469,15 +657,15 @@ export default function AgenticPage() {
         </div>
       </section>
 
-      {/* ── DEVELOPER EXPERIENCE ──────────────────────────────────────────── */}
-      <DevExSection />
+      {/* ── AGENT OUTCOMES ────────────────────────────────────────────────── */}
+      <AgentOutcomeSection />
 
       {/* ── MARQUEE CAPABILITIES ──────────────────────────────────────────── */}
       <section className="py-0 border-t border-black/[0.06] overflow-hidden select-none">
         <div className="flex border-b border-black/[0.06]" style={{ animation: "marqueeLeft 28s linear infinite" }}>
           {[...Array(3)].map((_, rep) => (
             <div key={rep} className="flex shrink-0">
-              {["Web Research", "Code Generation", "Email Drafting", "Data Analysis", "PR Reviews", "Scheduling", "SQL Queries", "API Calls", "File Processing", "Monitoring"].map((cap) => (
+              {["Verified Buyer", "Research Agent", "Unknown Crawler", "Copycat", "Identity Score", "Lead Score", "Signed Offer", "Public Price", "Clone Scan", "Checkout Handoff"].map((cap) => (
                 <div key={cap} className="flex items-center gap-6 px-10 py-5 border-r border-black/[0.06] shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-black/20 shrink-0" />
                   <span className="text-sm text-black/45 whitespace-nowrap tracking-wide">{cap}</span>
@@ -489,7 +677,7 @@ export default function AgenticPage() {
         <div className="flex" style={{ animation: "marqueeRight 22s linear infinite" }}>
           {[...Array(3)].map((_, rep) => (
             <div key={rep} className="flex shrink-0">
-              {["Report Writing", "Slack Summaries", "Lead Scoring", "Image Tagging", "Test Running", "Deployment", "Log Parsing", "Invoice Processing", "Meeting Notes", "Sentiment Analysis"].map((cap) => (
+              {["Returns Asked", "Shipping Asked", "Cart Built", "Offer Accepted", "Offer Withheld", "Fingerprint Mismatch", "Marker Planted", "Bad Domain", "Margin Rule", "Agent Funnel"].map((cap) => (
                 <div key={cap} className="flex items-center gap-6 px-10 py-5 border-r border-black/[0.06] shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-black/12 shrink-0" />
                   <span className="text-sm text-black/30 whitespace-nowrap tracking-wide">{cap}</span>
@@ -506,92 +694,21 @@ export default function AgenticPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
             <div>
               <PixelIcon type="agents" size={40} />
-              <div className="mt-4"><Tag>LIVE RIGHT NOW</Tag></div>
+              <div className="mt-4"><Tag>LIVE DEMO</Tag></div>
               <RevealText className="mt-5 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-[1.05]">
-                {"Agents working\n24 / 7, autonomously."}
+                {"Agents arrive.\nPrism personalizes."}
               </RevealText>
               <p className="mt-6 text-base text-black/40 leading-relaxed max-w-sm">
-                At any moment, thousands of agents are running tasks on behalf of teams around the world — no human in the loop.
+                Send a buyer, researcher, or copycat. Watch Prism assign identity, maximize the lead, or stop the clone.
               </p>
               <div className="mt-10 flex items-end gap-2">
                 <LiveAgentCounter />
-                <span className="text-black/30 text-sm mb-1 tracking-wide">agents active globally</span>
+                <span className="text-black/30 text-sm mb-1 tracking-wide">agent sessions scored</span>
               </div>
             </div>
             <div className="relative">
               <LiveAgentFeed />
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── PRICING ───────────────────────────────────���────������─────────────── */}
-      <section id="pricing" className="py-32 px-6 md:px-12 lg:px-20 border-t border-black/[0.06]">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 flex flex-col items-center">
-            <PixelIcon type="pricing" size={40} />
-            <div className="mt-4"><Tag>PRICING</Tag></div>
-            <RevealText className="mt-5 text-4xl md:text-5xl font-light tracking-tight leading-[1.05]">
-              {"Pay as your agents grow."}
-            </RevealText>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3" onMouseMove={handleMouse}>
-            {[
-              {
-                name: "Sandbox",
-                price: "Free",
-                sub: "Start experimenting",
-                features: ["5 agents", "1,000 tasks/mo", "Community support", "Basic traces"],
-                delay: 0,
-              },
-              {
-                name: "Builder",
-                price: "$49",
-                period: "/mo",
-                sub: "For teams shipping fast",
-                features: ["50 agents", "100K tasks/mo", "Priority support", "Full traces + replay", "Custom tools", "REST API"],
-                highlight: true,
-                delay: 80,
-              },
-              {
-                name: "Enterprise",
-                price: "Custom",
-                sub: "For orgs at scale",
-                features: ["Unlimited agents", "Unlimited tasks", "Dedicated infra", "SOC 2 / HIPAA", "SLA guarantees", "Custom contracts"],
-                delay: 140,
-              },
-            ].map((plan) => (
-              <BentoCard
-                key={plan.name}
-                className={`p-8 flex flex-col ${plan.highlight ? "border-black/20 bg-[#F0EEE8]" : ""}`}
-                delay={plan.delay}
-              >
-                <div className="mb-8">
-                  <div className="font-pixel text-[11px] tracking-widest text-black/40 mb-4">{plan.name}</div>
-                  <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-4xl font-light">{plan.price}</span>
-                    {plan.period && <span className="text-black/40 text-sm">{plan.period}</span>}
-                  </div>
-                  <p className="text-xs text-black/35 tracking-wide">{plan.sub}</p>
-                </div>
-                <ul className="space-y-3 flex-1 mb-8">
-                  {plan.features.map(f => (
-                    <li key={f} className="flex items-center gap-3 text-sm text-black/55">
-                      <div className="w-1 h-1 rounded-full bg-black/25 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <button className={`w-full py-3 rounded-xl text-sm tracking-widest transition-all duration-200 ${
-                  plan.highlight
-                    ? "bg-[#111] text-white hover:bg-[#333]"
-                    : "border border-black/10 text-black/60 hover:border-black/25 hover:text-black hover:bg-black/[0.04]"
-                }`}>
-                  {plan.name === "Enterprise" ? "CONTACT SALES" : "GET STARTED"}
-                </button>
-              </BentoCard>
-            ))}
           </div>
         </div>
       </section>
@@ -625,10 +742,10 @@ export default function AgenticPage() {
         />
         <div className="relative z-10 max-w-2xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight leading-[1.05] mb-6">
-            Start building your<br />agent workforce.
+            Identify every agent.<br />Maximize every lead.
           </h2>
           <p className="text-sm text-black/45 leading-relaxed mb-10">
-            Join thousands of teams deploying AI agents that work around the clock, across every timezone.
+            Prism helps stores personalize each agent journey while stopping copycats before they steal the sale.
           </p>
           {!submitted ? (
             <form
@@ -663,17 +780,17 @@ export default function AgenticPage() {
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer className="py-10 px-6 md:px-12 lg:px-20 border-t border-black/[0.06]">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <span className="font-pixel text-xs tracking-[0.25em] text-black/50">AGENTIC</span>
+          <span className="font-pixel text-xs tracking-[0.25em] text-black/50">PRISM</span>
 
           {/* Nav sections */}
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
             {[
-              { label: "Platform",     href: "#platform" },
+              { label: "System",       href: "#platform" },
               { label: "Agents",       href: "#agents" },
-              { label: "Workflow",     href: "#workflow" },
-              { label: "Integrations", href: "#integrations" },
+              { label: "Routes",       href: "#workflow" },
+              { label: "Console",      href: "#integrations" },
+              { label: "Outcomes",     href: "#agent-outcomes" },
               { label: "Live",         href: "#live" },
-              { label: "Pricing",      href: "#pricing" },
             ].map(l => (
               <a key={l.label} href={l.href} className="text-xs text-black/35 hover:text-black/70 transition-colors tracking-widest">{l.label}</a>
             ))}
@@ -692,7 +809,7 @@ export default function AgenticPage() {
           </div>
         </div>
         <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-black/[0.04]">
-          <span className="text-xs text-black/20">© 2026 Agentic. All rights reserved.</span>
+          <span className="text-xs text-black/20">© 2026 Prism. Built at Grok Bot Commerce London Hackathon.</span>
         </div>
       </footer>
     </div>

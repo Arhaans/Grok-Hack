@@ -11,21 +11,21 @@ const _courierPrime = Courier_Prime({ weight: ["400", "700"], subsets: ["latin"]
 const _ibmPlexSans = IBM_Plex_Sans({ weight: ["300", "400", "500", "600"], subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Agentic — Autonomous AI Agents at Scale',
-  description: 'Deploy autonomous AI agents that think, act, and execute across any workflow. Connect 200+ integrations, run agents in parallel, and ship faster with the Agentic platform.',
-  keywords: ['AI agents', 'autonomous agents', 'LLM orchestration', 'AI automation', 'multi-agent platform'],
-  authors: [{ name: 'Agentic' }],
+  title: 'Prism — Agent Identity for Commerce',
+  description: 'Prism gives every AI shopping agent an identity, creates a unique experience to maximize leads, and stops copycats before they steal the sale.',
+  keywords: ['agent commerce', 'AI shopping agents', 'agent identity', 'lead optimization', 'copycat protection'],
+  authors: [{ name: 'Prism' }],
   openGraph: {
-    title: 'Agentic — Autonomous AI Agents at Scale',
-    description: 'Deploy autonomous AI agents that think, act, and execute across any workflow.',
+    title: 'Prism — Agent Identity for Commerce',
+    description: 'Give every agent an identity, route unique experiences, maximize leads, and stop copycats.',
     type: 'website',
-    url: 'https://agentic.ai',
-    siteName: 'Agentic',
+    url: 'https://prism-commerce.ai',
+    siteName: 'Prism',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Agentic — Autonomous AI Agents at Scale',
-    description: 'Deploy autonomous AI agents that think, act, and execute across any workflow.',
+    title: 'Prism — Agent Identity for Commerce',
+    description: 'Every agent gets a unique experience. Copycats get stopped.',
   },
   icons: {
     icon: [
