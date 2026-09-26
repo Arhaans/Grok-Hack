@@ -86,6 +86,7 @@ export async function scanClone(origin: string, url?: string): Promise<Incident 
     badCheckoutDomain: clone?.checkoutDomain ?? "unknown",
     copiedSnippet,
   }
+  if (clone) s.flaggedDomains.set(clone.domain, incident.id)
   s.incidents = s.incidents.filter((i) => !(i.cloneUrl === incident.cloneUrl && i.sourceSessionId === incident.sourceSessionId))
   s.incidents.push(incident)
   logEvent(

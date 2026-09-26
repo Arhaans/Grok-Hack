@@ -25,13 +25,15 @@ type Story = {
   copycat?: { claimed: string; fingerprint?: string; distance?: number; scraped?: number; identity?: AgentIdentity }
   incident?: Incident
   buyer?: { outletPrice?: number; reasons: string[]; total?: number; verifiedAs?: string }
+  stop?: { blocked: number; signedOffers: number; listings: number }
 }
 
 const CHAPTERS = [
   { id: "shoppers", title: "Real shoppers arrive", line: "Three AI agents shop the store. Prism fingerprints each model and offers the deal that converts it." },
-  { id: "copycat", title: "A copycat arrives", line: "It claims to be ChatGPT. Its answers say otherwise. Prism withholds agent pricing, but lets it take the marked catalog." },
+  { id: "copycat", title: "A copycat arrives", line: "It claims to be ChatGPT. Its answers say otherwise. Prism withholds prices and signed offers and refuses its scraping burst. The public listings it grabbed first are secretly marked." },
   { id: "clone", title: "It clones the store", line: "Minutes later an outlet appears: same store, lower prices, no returns, its own checkout." },
   { id: "trace", title: "Prism traces it", line: "Every description Prism served carried an invisible marker. The clone copied it, and it leads straight back to the visit." },
+  { id: "stop", title: "Prism stops it", line: "Blocked at the door, nothing signed to sell with, and its domain flagged to every agent that checks. The evidence is ready for a takedown." },
   { id: "buyer", title: "The real buyer can't be fooled", line: "A signed agent finds the cheaper outlet, checks its offer with the merchant, and buys from the real store." },
   { id: "results", title: "Results", line: "Every agent identified, every buyer served on its own terms, and the copycat never gets paid." },
 ] as const
@@ -190,9 +192,7 @@ function Trace({ incident, copycat }: { incident: Incident; copycat: Story["copy
 export function DemoStory() {
   const [chapter, setChapter] = useState(-1) // -1 idle, 0..5 playing/finished
   const [live, setLive] = useState(false) // replay (default): recorded + instant; live: Claude seller + Llama on this laptop
-  const [playing, setPlaying] = useState(false)
   const [story, setStory] = useState<Story>({ shoppers: [] })
-  const [clone, setClone] = useState(false)
   const [frameKey, setFrameKey] = useState(0)
   const [status, setStatus] = useState<{ fingerprint?: boolean; ok: boolean } | null>(null)
   const identities = useRef<AgentIdentity[]>([])
@@ -238,70 +238,84 @@ export function DemoStory() {
       updateShopper(i, (x) => ({ ...x, waiting: undefined, total: (d.handoff as { total?: number } | undefined)?.total }))
   }
 
-  const play = async () => {
-    if (playing) return
-    setPlaying(true)
+  const [auto, setAuto] = useState(false)
+  const [preparing, setPreparing] = useState(false)
+  const started = chapter >= 0
+  const last = CHAPTERS.length - 1
+
+  // Start: run the agents once. Chapter 1 streams live; everything later is computed in the background,
+  // so every other slide is instant and you can go back and forth freely.
+  const start = async () => {
+    if (preparing) return
+    setPreparing(true)
     document.getElementById("demo")?.scrollIntoView({ behavior: "smooth", block: "start" })
-    setClone(false)
     setStory({ shoppers: SHOPPERS.map((x) => ({ ...x, lines: [], protocol: [] })) })
     await fetch("/api/prism/reset", { method: "POST" })
     setFrameKey((k) => k + 1)
     setChapter(0)
 
-    // Live chapter: three shoppers stream their handshake + negotiation as it happens.
     const mode = live ? "live" : "replay"
     const shoppersDone = Promise.all(SHOPPERS.map((x, i) => runStream(`agent=shopper&model=${x.model}&mode=${mode}&pace=${live ? 250 : 420}`, onShopperStep(i))))
-    // Pipeline: everything the later chapters need is computed in the background meanwhile.
     const background = (async () => {
       const cc = await run("agent=copycat&probeAnswers=recorded&autoScan=0&pace=0")
+      const ccGuess = cc.steps.find((x) => x.step === "fingerprinted")?.data as ModelGuess | undefined
+      const scrape = cc.steps.find((x) => x.step === "scrape")?.data as { skus?: string[]; blocked?: number; signedOffers?: number } | undefined
+      setStory((st) => ({
+        ...st,
+        copycat: {
+          claimed: "ChatGPT-User",
+          fingerprint: ccGuess?.top[0]?.model,
+          distance: ccGuess?.top[0]?.distance,
+          scraped: scrape?.skus?.length,
+          identity: identities.current.find((id) => id.sessionId === cc.sessionId),
+        },
+        stop: { blocked: scrape?.blocked ?? 0, signedOffers: scrape?.signedOffers ?? 0, listings: scrape?.skus?.length ?? 0 },
+      }))
       const scan = (await (await fetch("/api/prism/scan", { method: "POST", body: "{}" })).json()) as { incident: Incident | null }
+      setStory((st) => ({ ...st, incident: scan.incident ?? undefined }))
       const buyer = await run("agent=buyer&brain=scripted&pace=0")
-      return { cc, scan, buyer }
+      const outlet = (buyer.steps.find((x) => x.step === "check_clone")?.data as { price: number; problems: string[] }[] | undefined) ?? []
+      const cheapest = [...outlet].sort((x, y) => x.price - y.price)[0]
+      const hand = buyer.steps.find((x) => x.step === "checkout")?.data as { total?: number } | undefined
+      setStory((st) => ({ ...st, buyer: { outletPrice: cheapest?.price, reasons: cheapest?.problems ?? [], total: hand?.total, verifiedAs: "grok-shopper" } }))
     })()
+    await Promise.all([shoppersDone, background])
+    setPreparing(false)
+  }
 
-    await shoppersDone
-    await sleep(2500)
-    const { cc, scan, buyer } = await background
+  const goTo = useCallback((i: number) => setChapter(Math.max(0, Math.min(last, i))), [last])
+  const next = useCallback(() => setChapter((c) => (c < 0 ? c : Math.min(last, c + 1))), [last])
+  const back = useCallback(() => setChapter((c) => (c <= 0 ? c : c - 1)), [])
 
-    // 2. Copycat (precomputed: reveal only)
-    setChapter(1)
-    const ccGuess = cc.steps.find((x) => x.step === "fingerprinted")?.data as ModelGuess | undefined
-    setStory((st) => ({
-      ...st,
-      copycat: {
-        claimed: "ChatGPT-User",
-        fingerprint: ccGuess?.top[0]?.model,
-        distance: ccGuess?.top[0]?.distance,
-        scraped: (cc.steps.find((x) => x.step === "scrape")?.data as { skus?: string[] })?.skus?.length,
-        identity: identities.current.find((id) => id.sessionId === cc.sessionId),
-      },
-    }))
-    await sleep(5000)
+  // ← / → keys step through the slides
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!started) return
+      if (e.key === "ArrowRight") next()
+      if (e.key === "ArrowLeft") back()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [started, next, back])
 
-    // 3. The clone takes over the frame
-    setChapter(2)
-    setClone(true)
-    setFrameKey((k) => k + 1)
-    await sleep(4500)
+  // Optional auto-play: 5 s per slide (the first slide waits for the shoppers to finish)
+  useEffect(() => {
+    if (!auto || !started || chapter >= last) return
+    if (chapter === 0 && story.shoppers.some((x) => x.total === undefined)) return
+    const t = setTimeout(next, chapter === 0 ? 2500 : 5000)
+    return () => clearTimeout(t)
+  }, [auto, started, chapter, last, next, story.shoppers])
 
-    // 4. Trace
-    setChapter(3)
-    setStory((st) => ({ ...st, incident: scan.incident ?? undefined }))
-    await sleep(5000)
+  // The frame shows the copycat outlet on the clone / trace / stop slides
+  const clone = ["clone", "trace", "stop"].includes(CHAPTERS[chapter]?.id ?? "") && !!story.copycat
+  const playing = preparing
 
-    // 5. Real buyer
-    setChapter(4)
-    setClone(false)
-    setFrameKey((k) => k + 1)
-    const outlet = (buyer.steps.find((x) => x.step === "check_clone")?.data as { price: number; problems: string[] }[] | undefined) ?? []
-    const cheapest = [...outlet].sort((x, y) => x.price - y.price)[0]
-    const hand = buyer.steps.find((x) => x.step === "checkout")?.data as { total?: number } | undefined
-    setStory((st) => ({ ...st, buyer: { outletPrice: cheapest?.price, reasons: cheapest?.problems ?? [], total: hand?.total, verifiedAs: "grok-shopper" } }))
-    await sleep(5000)
-
-    // 6. Results
-    setChapter(5)
-    setPlaying(false)
+  const downloadEvidence = () => {
+    const blob = new Blob([JSON.stringify({ incident: story.incident, copycat: story.copycat, stopped: story.stop }, null, 2)], { type: "application/json" })
+    const a = document.createElement("a")
+    a.href = URL.createObjectURL(blob)
+    a.download = `prism-evidence-${story.incident?.id ?? "incident"}.json`
+    a.click()
   }
 
   const s = story
@@ -333,17 +347,44 @@ export function DemoStory() {
           </h2>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={play}
-            disabled={playing}
-            className="group relative overflow-hidden rounded-full bg-black px-7 py-4 text-sm tracking-wide text-white transition-transform hover:scale-[1.03] disabled:opacity-60"
-          >
-            <span
-              className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
-              style={{ backgroundImage: "linear-gradient(90deg,#3b82f6,#a855f7,#ef4444,#3b82f6)", backgroundSize: "200% 100%", animation: "storyShine 3s linear infinite" }}
-            />
-            <span className="relative">{playing ? "Playing…" : chapter === 5 ? "↻ Replay the story" : "▶ Play the story"}</span>
-          </button>
+          {!started ? (
+            <button
+              onClick={start}
+              className="group relative overflow-hidden rounded-full bg-black px-7 py-4 text-sm tracking-wide text-white transition-transform hover:scale-[1.03]"
+            >
+              <span
+                className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
+                style={{ backgroundImage: "linear-gradient(90deg,#3b82f6,#a855f7,#ef4444,#3b82f6)", backgroundSize: "200% 100%", animation: "storyShine 3s linear infinite" }}
+              />
+              <span className="relative">▶ Start the story</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button onClick={back} disabled={chapter <= 0} className="rounded-full border border-black/15 px-5 py-3.5 text-sm text-black/70 transition-colors hover:bg-black/[0.04] disabled:opacity-30">
+                ◀ Back
+              </button>
+              <button
+                onClick={next}
+                disabled={chapter >= last}
+                className="group relative overflow-hidden rounded-full bg-black px-7 py-3.5 text-sm tracking-wide text-white transition-transform hover:scale-[1.03] disabled:opacity-40"
+              >
+                <span
+                  className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
+                  style={{ backgroundImage: "linear-gradient(90deg,#3b82f6,#a855f7,#ef4444,#3b82f6)", backgroundSize: "200% 100%", animation: "storyShine 3s linear infinite" }}
+                />
+                <span className="relative">Next ▶</span>
+              </button>
+              <button
+                onClick={() => setAuto((v) => !v)}
+                className={`rounded-full border px-3 py-2 text-[10px] tracking-widest ${auto ? "border-black/60 bg-black/[0.06] text-black/80" : "border-black/10 text-black/45"}`}
+              >
+                {auto ? "❚❚ AUTO" : "▷ AUTO"}
+              </button>
+              <button onClick={start} disabled={preparing} className="rounded-full border border-black/10 px-3 py-2 text-[10px] tracking-widest text-black/45 disabled:opacity-30">
+                ↻ RESTART
+              </button>
+            </div>
+          )}
           <button
             onClick={() => !playing && setLive((v) => !v)}
             disabled={playing}
@@ -360,24 +401,24 @@ export function DemoStory() {
         </div>
       </div>
 
-      {/* Chapter stepper */}
+      {/* Chapter tabs: click to jump */}
       <div className="mx-auto mt-8 flex max-w-[1500px] gap-2">
         {CHAPTERS.map((c, i) => (
-          <div key={c.id} className="flex-1">
+          <button key={c.id} onClick={() => started && goTo(i)} disabled={!started} className="group flex-1 text-left disabled:cursor-default">
             <div className="h-1 overflow-hidden rounded-full bg-black/[0.07]">
               <div
                 className="h-1 rounded-full"
                 style={{
-                  width: i < chapter || (i === chapter && !playing) ? "100%" : i === chapter ? "100%" : "0%",
-                  transition: i === chapter && playing ? "width 4.5s linear" : "width 0.4s ease",
-                  background: c.id === "copycat" || c.id === "clone" ? "#ef4444" : c.id === "trace" ? "#a855f7" : "#111",
+                  width: i <= chapter ? "100%" : "0%",
+                  transition: "width 0.6s cubic-bezier(0.16,1,0.3,1)",
+                  background: c.id === "copycat" || c.id === "clone" ? "#ef4444" : c.id === "trace" ? "#a855f7" : c.id === "stop" ? "#10b981" : "#111",
                 }}
               />
             </div>
-            <div className={`mt-2 hidden text-[10px] tracking-wide md:block ${i === chapter ? "text-black/80" : "text-black/30"}`}>
+            <div className={`mt-2 hidden text-[10px] tracking-wide transition-colors md:block ${i === chapter ? "text-black/85" : "text-black/30 group-hover:text-black/55"}`}>
               {i + 1}. {c.title}
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -398,7 +439,7 @@ export function DemoStory() {
             </div>
             <span className={`text-[10px] tracking-widest ${clone ? "text-red-600" : "text-emerald-600"}`}>{clone ? "COPYCAT" : "PRISM INSTALLED"}</span>
           </div>
-          <iframe key={frameKey} src={clone ? "/store?clone=1" : "/store"} title="Prism Skincare" className="h-[calc(100vh-190px)] min-h-[620px] w-full" />
+          <iframe key={`${frameKey}-${clone}`} src={clone ? "/store?clone=1" : "/store"} title="Prism Skincare" className="h-[calc(100vh-190px)] min-h-[620px] w-full" />
         </div>
 
         {/* Prism sees */}
@@ -416,7 +457,7 @@ export function DemoStory() {
                   a store tailor its offer or trace a scraper.
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-black/45">
-                  Press <b className="text-black/70">Play the story</b> to watch Prism identify every agent, sell to each one on its own terms, and catch
+                  Press <b className="text-black/70">Start the story</b>, then step through with <b className="text-black/70">Next</b> or the arrow keys, to watch Prism identify every agent, sell to each one on its own terms, and stop
                   the one that clones the store. Or just use the shop.
                 </p>
               </div>
@@ -518,7 +559,7 @@ export function DemoStory() {
                       </div>
                     </Appear>
                     <Appear delay={500}>
-                      <div className="mt-2 text-[11px] text-black/55">Scraped {s.copycat.scraped} products in a burst · agent pricing withheld</div>
+                      <div className="mt-2 text-[11px] text-black/55">Withheld: no prices, no signed offers · grabbed {s.copycat.scraped} public listings, then Prism refused {s.stop?.blocked ?? 0} more requests</div>
                     </Appear>
                     {s.copycat.identity && (
                       <div className="mt-3 space-y-1.5">
@@ -548,10 +589,49 @@ export function DemoStory() {
           )}
 
           {/* 4. trace */}
-          {chapter === 3 && s.incident && <Trace incident={s.incident} copycat={s.copycat} />}
+          {chapter === 3 && (s.incident ? <Trace incident={s.incident} copycat={s.copycat} /> : <div className="text-[11px] tracking-widest text-black/35">SCANNING THE OUTLET…</div>)}
+
+          {/* 5. stop */}
+          {chapter === 4 && (
+            <div className="space-y-3">
+              {[
+                {
+                  t: "Blocked at the door",
+                  d: s.stop
+                    ? `Withheld agent: 0 prices, ${s.stop.signedOffers} signed offers. It grabbed ${s.stop.listings} public listings (all marked); Prism refused its next ${s.stop.blocked} requests.`
+                    : "…",
+                },
+                { t: "Nothing to sell with", d: "Every offer on the outlet is forged. Agents verify offers with the merchant, so the clone can't close a single agent sale." },
+                {
+                  t: "Flagged to every agent",
+                  d: s.incident ? `${s.incident.cloneUrl.replace("https://", "")} is now flagged: any agent that checks an offer from it is told it's a traced copycat.` : "…",
+                },
+              ].map((k, i) => (
+                <Appear key={k.t} delay={i * 180}>
+                  <div className="rounded-xl border border-emerald-500/30 bg-white/85 p-3.5">
+                    <div className="flex items-center gap-2 text-sm text-black/80">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[11px] text-white">✓</span>
+                      {k.t}
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-black/55">{k.d}</p>
+                  </div>
+                </Appear>
+              ))}
+              <Appear delay={600}>
+                <button
+                  onClick={downloadEvidence}
+                  disabled={!s.incident}
+                  className="w-full rounded-xl border border-black/10 bg-black px-4 py-3 text-left text-[12px] text-white transition-transform hover:scale-[1.01] disabled:opacity-40"
+                >
+                  ⬇ Download takedown evidence
+                  <span className="mt-0.5 block text-[10px] text-white/50">marker, visit, claimed vs fingerprinted model, copied text, price changes, fake checkout</span>
+                </button>
+              </Appear>
+            </div>
+          )}
 
           {/* 5. real buyer */}
-          {chapter === 4 && (
+          {chapter === 5 && (
             <Appear>
               <div className="rounded-xl border border-black/[0.07] bg-white/85 p-4">
                 <div className="flex items-center justify-between">
@@ -588,14 +668,14 @@ export function DemoStory() {
           )}
 
           {/* 6. results */}
-          {chapter === 5 && (
+          {chapter === 6 && (
             <div className="grid grid-cols-2 gap-3">
               {[
                 { v: s.shoppers.length + 2, l: "agents identified" },
                 { v: 4, l: "models fingerprinted" },
                 { v: revenue, l: "revenue from agents", prefix: "$" },
-                { v: 1, l: "copycat traced" },
-                { v: 3, l: "tactics, one per model" },
+                { v: 1, l: "copycat traced and flagged" },
+                { v: s.stop?.blocked ?? 0, l: "scraping requests refused" },
                 { v: 0, l: "sales lost to the clone" },
               ].map((k, i) => (
                 <Appear key={k.l} delay={i * 120}>

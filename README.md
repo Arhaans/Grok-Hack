@@ -20,19 +20,22 @@ But a signature only says *who runs* the agent. ChatGPT's key directory says `ch
 |---|---|
 | **Recognize** | Web Bot Auth signature check, then an 8-question handshake that [LLMmap](https://github.com/pasquini-dario/LLMmap) turns into a model fingerprint (52 known models). Behaviour (catalog coverage, bursts, cart/checkout) gives intent. Every agent gets **trust / lead / risk** scores and an experience: `private-offer`, `negotiated`, `public` or `withheld`. |
 | **Negotiate** | The model family picks the tactic: a clean first offer for GPT, evidence first for Claude, a bundle instead of a discount for Llama. Prism's seller replies are written by **Claude Sonnet**; prices are decided in code and **signed**, so the checkout session honours them and nobody can forge one. Never below 90% of list. |
-| **Protect** | Every description Prism serves carries an invisible per-visit marker (zero-width characters, plus a wording variant as backup). When a clone copies it, Prism traces the clone back to the exact visit. The clone's copied offers fail signature verification, so real buyer agents reject it. |
+| **Protect** | **Stop what it can:** impostors and scrapers get no prices and no signed offers, and their scraping bursts are refused. **Trace what it can't:** every description Prism serves carries an invisible per-visit marker, so a clone built from it leads back to the exact visit. Then the clone's domain is flagged, and every agent that checks an offer from it is told it's a traced copycat. Its forged offers fail verification, so it can't close a sale. |
 | **Learn** | Conversion and order value per model family, drop-off funnel, top questions (`GET /api/prism/metrics`). |
 
 ## The demo
 
-`/` is the Prism site: an animated hero, then **one big frame with the demo store, Prism Skincare**, which has Prism installed with one line (`<script src="/prism.js">`). Press **▶ Play the story**:
+`/` is the Prism site: an animated hero, then **one big frame with the demo store, Prism Skincare**, which has Prism installed with one line (`<script src="/prism.js">`). Press **▶ Start the story**, then step through the slides with **◀ Back / Next ▶**, the arrow keys, the chapter tabs, or **Auto**:
 
 1. **Real shoppers arrive.** A ChatGPT agent, a Claude agent and a Llama agent. Prism fingerprints each and negotiates differently: GPT takes a signed $64 first offer, Claude gets clinical evidence and a free sample trio at $68, Llama haggles for $55 and leaves with a $100 bundle.
-2. **A copycat arrives.** It claims to be ChatGPT, but its fingerprint says Qwen. It's flagged as an impostor, agent pricing is withheld, and it scrapes the (marked) catalog.
+2. **A copycat arrives.** It claims to be ChatGPT, but its fingerprint says Qwen. Flagged as an impostor: no prices, no signed offers, and Prism refuses its scraping burst. The public listings it grabbed first are secretly marked.
 3. **It clones the store.** The frame turns into *prism-skincare-outlet.shop*: lower prices, all sales final, its own checkout.
 4. **Prism traces it.** A glowing line runs from the copied text on the outlet to the visit that took it.
-5. **The real buyer can't be fooled.** A signed Grok Shopper finds the cheaper outlet, the offer fails verification, and it buys from the real store.
-6. **Results.** Agents identified, revenue, copycat traced, sales lost to the clone: 0.
+5. **Prism stops it.** Blocked at the door; nothing signed to sell with (every outlet offer is forged); its domain is flagged to every agent that checks an offer. One click downloads the takedown evidence.
+6. **The real buyer can't be fooled.** A signed Grok Shopper finds the cheaper outlet; the check fails ("flagged by Prism as a traced copycat", forged signature, wrong checkout domain); it buys from the real store.
+7. **Results.** Agents identified, revenue, scraping requests refused, copycat traced and flagged, sales lost to the clone: 0.
+
+Pressing Start runs every agent once: slide 1 streams live, and everything else is computed in the background, so you can move back and forth freely.
 
 **Two modes** (switch next to the Play button):
 - **Replay (default):** recorded answers and replies. Instant, the same every time, and each chapter lasts 5 seconds at most.

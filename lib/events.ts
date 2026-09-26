@@ -29,6 +29,8 @@ type Store = {
   checkouts: Map<string, CheckoutSession>
   clone: CloneStore | null
   markers: Map<string, string> // marker id → sessionId
+  flaggedDomains: Map<string, string> // traced clone domain → incident id
+  blocked: Map<string, number> // sessionId → requests Prism refused
 }
 
 // globalThis so dev reloads and separate route bundles share one store.
@@ -44,6 +46,8 @@ function fresh(): Store {
     checkouts: new Map(),
     clone: null,
     markers: new Map(),
+    flaggedDomains: new Map(),
+    blocked: new Map(),
   }
 }
 

@@ -59,11 +59,12 @@ export function buildMatrix(products: Product[], sessionId: string): ComparisonM
 }
 
 // Raw catalog view (what a harvester gets when it doesn't ask for a format).
-export function buildFull(products: Product[], sessionId: string) {
+// withheld agents (impostors, scrapers) get public facts only: no signed offers to copy
+export function buildFull(products: Product[], sessionId: string, withhold = false) {
   return {
     format: "full" as const,
     merchant: MERCHANT.name,
     policies: POLICIES,
-    products: products.map((p) => ({ ...p, description: served(sessionId, p), offer: signOffer(p.sku, p.price) })),
+    products: products.map((p) => ({ ...p, description: served(sessionId, p), ...(withhold ? {} : { offer: signOffer(p.sku, p.price) }) })),
   }
 }

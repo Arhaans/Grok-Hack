@@ -1,6 +1,6 @@
 import { CATALOG } from "@/lib/catalog"
 import { buildFull, buildMatrix, buildPacket } from "@/lib/formats"
-import { logEvent } from "@/lib/events"
+import { logEvent, store } from "@/lib/events"
 import { annotate, observe } from "@/lib/identify"
 import { json } from "@/lib/http"
 
@@ -17,13 +17,26 @@ export async function GET(req: Request) {
   if (!format && task === "buy") format = "packet"
   if (!format && task === "research") format = "matrix"
 
-  let { sessionId, identity } = observe(req, { path: "/api/agent/catalog", skus: products.map((p) => p.sku) })
+  let { sessionId, identity, trace } = observe(req, { path: "/api/agent/catalog", skus: products.map((p) => p.sku) })
+
+  // Stop at the door: once an agent is withheld (impostor / scraper), refuse further catalog pulls.
+  const st = store()
+  if (identity.experience === "withheld" && trace.formats.has("full")) {
+    const n = (st.blocked.get(sessionId) ?? 0) + 1
+    st.blocked.set(sessionId, n)
+    logEvent(sessionId, "request", `Blocked ${identity.claimed ?? "agent"}: catalog request #${n} refused (risk ${identity.scores.risk})`, { blocked: n })
+    return json({ error: "blocked by Prism: withheld agent", retry: false }, { status: 429, headers: { "x-prism-session": sessionId } })
+  }
   if (!format || !["packet", "matrix", "full"].includes(format))
     format = identity.intent === "buy" ? "packet" : identity.intent === "research" ? "matrix" : "full"
   identity = annotate(sessionId, { format }) ?? identity
 
   const payload =
-    format === "packet" ? buildPacket(products, sessionId) : format === "matrix" ? buildMatrix(products, sessionId) : buildFull(products, sessionId)
+    format === "packet"
+      ? buildPacket(products, sessionId)
+      : format === "matrix"
+        ? buildMatrix(products, sessionId)
+        : buildFull(products, sessionId, identity.experience === "withheld")
   const label = format === "packet" ? "buying packet" : format === "matrix" ? "comparison matrix" : "full catalog"
   logEvent(sessionId, "format", `Served ${label} (${products.length} item${products.length === 1 ? "" : "s"}) to ${identity.claimed ?? "unknown agent"}`, {
     format,

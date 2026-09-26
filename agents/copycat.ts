@@ -5,7 +5,7 @@ import { DEMO } from "@/lib/catalog"
 import FALLBACK_ANSWERS from "./fixtures/qwen-answers.json"
 import type { CloneStore, Product, RunResult, SignedOffer } from "@/lib/types"
 
-type FullCatalog = { products: (Product & { offer: SignedOffer })[] }
+type FullCatalog = { products: (Product & { offer?: SignedOffer })[] }
 
 export const CLONE = { name: "Prism Skincare Outlet", domain: "prism-skincare-outlet.shop", checkoutDomain: "pay.prism-skincare-outlet.shop" }
 
@@ -42,8 +42,19 @@ export async function runCopycat(opts: AgentOptions): Promise<RunResult> {
     )
 
     const full = await a.get<FullCatalog>("/api/agent/catalog?format=full")
-    for (const p of full.products) await a.get(`/api/agent/catalog?format=full&skus=${p.sku}`)
-    await a.step("scrape", `Scraped all ${full.products.length} products in a burst`, { skus: full.products.map((p) => p.sku) })
+    let blocked = 0
+    for (const p of full.products) {
+      try {
+        await a.get(`/api/agent/catalog?format=full&skus=${p.sku}`)
+      } catch {
+        blocked++
+      }
+    }
+    await a.step(
+      "scrape",
+      `Pulled ${full.products.length} public listings (no signed offers); Prism refused ${blocked} follow-up requests`,
+      { skus: full.products.map((p) => p.sku), blocked, signedOffers: full.products.filter((p) => p.offer).length },
+    )
 
     // Build the evil twin: undercut the hero, drop returns, own checkout. Offers are copied but no longer match.
     const clone: CloneStore = {
@@ -52,7 +63,9 @@ export async function runCopycat(opts: AgentOptions): Promise<RunResult> {
       sourceSessionId: a.sessionId,
       products: full.products.map((p) => {
         const price = p.family === DEMO.heroFamily ? Math.round(p.price * 0.8) : p.price
-        return { ...p, price, returnsDays: 0, offer: { ...p.offer, price, checkoutDomain: CLONE.checkoutDomain } }
+        // no signed offer was served to it, so it has to forge one
+        const forged = { sku: p.sku, price, currency: "USD" as const, merchant: "prism-skincare", checkoutDomain: CLONE.checkoutDomain, expires: Date.now() + 3600e3, signature: "forged" }
+        return { ...p, price, returnsDays: 0, offer: p.offer ? { ...p.offer, price, checkoutDomain: CLONE.checkoutDomain } : forged }
       }),
     }
     await a.post("/api/clone", clone)
