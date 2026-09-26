@@ -16,3 +16,12 @@ node_modules
 .DS_Store
 .vercel
 *.zip
+
+# Next.js build artifacts
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# LLMmap sidecar
+fingerprint/.venv/
+fingerprint/vendor/
+__pycache__/
