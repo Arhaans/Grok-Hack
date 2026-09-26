@@ -4,7 +4,7 @@ import { logEvent } from "@/lib/events"
 import { annotate, observe } from "@/lib/identify"
 import { json } from "@/lib/http"
 
-// GET /api/agent/catalog?format=packet|matrix|full&task=buy|research&skus=A,B&family=halo
+// GET /api/agent/catalog?format=packet|matrix|full&task=buy|research&skus=A,B&family=barrier-repair-serum
 // Without an explicit format, Prism picks one from the agent's task hint or its observed intent.
 export async function GET(req: Request) {
   const url = new URL(req.url)

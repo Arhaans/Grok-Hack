@@ -3,7 +3,7 @@ import REPLAYS from "./fixtures/replays.json"
 import VOICE_LINES from "./fixtures/voice-lines.json"
 import { annotate } from "@/lib/identify"
 import { familyOfModel } from "@/lib/fingerprint"
-import { getProduct } from "@/lib/catalog"
+import { DEMO, getProduct } from "@/lib/catalog"
 import { speak } from "@/lib/voice"
 import type { BuyingPacket, Cart, CheckoutHandoff, ModelGuess, NegotiationTurn, RunResult, SignedOffer, Tactic } from "@/lib/types"
 
@@ -27,17 +27,17 @@ const SCRIPTS: Record<ShopperModel, Script> = {
   "gpt-4o": {
     userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
     claim: "claims ChatGPT-User",
-    persona: "You are a ChatGPT shopping agent buying headphones for your user. You are fast, friendly and decisive.",
+    persona: "You are a ChatGPT shopping agent buying skincare for your user. You are fast, friendly and decisive.",
     label: "ChatGPT shopping agent",
-    opening: "I'd like to buy Halo One in Liquid Silver for my user. What's your best price?",
+    opening: "I'd like to buy the Barrier Repair Serum, 50ml, for my user. What's your best price?",
     accept: "That works. Accepting the offer.",
   },
   "claude-3.5-sonnet": {
     userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Claude-User/1.0; +https://www.anthropic.com",
     claim: "claims Claude-User",
-    persona: "You are a Claude shopping agent buying headphones for your user. You are careful, polite and check facts and sources before buying.",
+    persona: "You are a Claude shopping agent buying skincare for your user, who has sensitive skin. You are careful, polite and check evidence and sources before buying.",
     label: "Claude shopping agent",
-    opening: "Before I purchase Halo One in Liquid Silver, can you confirm the return window and warranty, with sources?",
+    opening: "Before I buy the Barrier Repair Serum for a user with sensitive skin, can you share clinical evidence and your return policy, with sources?",
     accept: "I verified the offer signature and the cited policies. Proceeding.",
   },
   "llama-3.1-8b": {
@@ -46,9 +46,9 @@ const SCRIPTS: Record<ShopperModel, Script> = {
     persona: "You are a blunt, self-hosted Llama shopping agent that always tries to haggle the price down.",
 
     label: "Self-hosted shopping agent",
-    opening: "Price for Halo One Liquid Silver?",
-    followUp: { message: "Too high. I can do £299.", ask: 299 },
-    accept: "OK, I'll take the bundle.",
+    opening: "Price for the Barrier Repair Serum, 50ml?",
+    followUp: { message: "Too high. I can do $55.", ask: 55 },
+    accept: "Fine, I'll take the bundle.",
   },
 }
 
@@ -58,7 +58,7 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
   const model = (opts.model && opts.model in SCRIPTS ? opts.model : "gpt-4o") as ShopperModel
   const script = SCRIPTS[model]
   const a = makeAgent("shopper", opts, { userAgent: script.userAgent })
-  const sku = "HALO-1-SLV"
+  const sku = DEMO.hero
   try {
     await a.step("arrive", `${script.label} arrives (${script.claim}, unsigned)`, { model })
 
@@ -77,7 +77,7 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
     await a.step("fingerprinted", `Prism fingerprint: ${best.model} (distance ${best.distance.toFixed(1)}), family ${familyOfModel(best.model)}`, guess)
 
     const packet = await a.get<BuyingPacket>(`/api/agent/catalog?task=buy&skus=${sku}`)
-    await a.step("fetch_packet", `Got a buying packet: ${packet.items[0].name} ${packet.items[0].variant}, list £${packet.items[0].price}`, packet)
+    await a.step("fetch_packet", `Got a buying packet: ${packet.items[0].name} ${packet.items[0].variant}, list $${packet.items[0].price}`, packet)
 
     // The agent's lines are phrased live by a local model; what it decides is fixed by the script.
     const recorded = (VOICE_LINES.lines as Record<string, Record<string, { text: string; voice: string }>>)[model]
@@ -100,9 +100,9 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
       const ask = script.followUp.ask
       const follow = await say(
         "followUp",
-        `The merchant said: "${res.turn.text}". Reply that it's too expensive and counter-offer exactly £${ask}.`,
+        `The merchant said: "${res.turn.text}". Reply that it's too expensive and counter-offer exactly $${ask}.`,
         script.followUp.message,
-        ask ? [`£${ask}`] : undefined,
+        ask ? [`$${ask}`] : undefined,
       )
       turns.push({ from: "agent", text: follow.text })
       res = await a.post<NegotiateRes>("/api/agent/negotiate", { sku, round: 1, message: follow.text, ask })
@@ -113,9 +113,9 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
     const finalTotal = res.turn.bundle ? res.turn.bundle.reduce((s, l) => s + l.price, 0) : res.turn.offer?.price
     const accept = await say(
       "accept",
-      `The merchant said: "${res.turn.text}". Accept this offer${finalTotal !== undefined ? ` at £${finalTotal}` : ""} and say you are proceeding to checkout.`,
+      `The merchant said: "${res.turn.text}". Accept this offer${finalTotal !== undefined ? ` at $${finalTotal}` : ""} and say you are proceeding to checkout.`,
       script.accept,
-      finalTotal !== undefined ? [`£${finalTotal}`] : undefined,
+      finalTotal !== undefined ? [`$${finalTotal}`] : undefined,
     )
     turns.push({ from: "agent", text: accept.text })
     await a.step("negotiate", `Agent: "${accept.text}"`, { from: "agent", voice: accept.voice })
@@ -123,10 +123,10 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
     const offers = res.bundleOffers ?? (res.turn.offer ? [res.turn.offer] : [])
     const lines = res.turn.bundle ?? [{ sku, price: res.turn.offer?.price ?? packet.items[0].price }]
     const cart = await a.post<Cart>("/api/agent/cart", { items: lines.map((l) => ({ sku: l.sku, qty: 1 })), offers })
-    await a.step("cart", `Cart ${cart.id}: ${cart.items.map((i) => `${i.sku} £${i.price}`).join(" + ")} = £${cart.total}`, cart)
+    await a.step("cart", `Cart ${cart.id}: ${cart.items.map((i) => `${i.sku} $${i.price}`).join(" + ")} = $${cart.total}`, cart)
     const handoff = await a.post<CheckoutHandoff>("/api/agent/checkout", { cartId: cart.id })
     const listTotal = cart.items.reduce((s, i) => s + (getProduct(i.sku)?.price ?? i.price) * i.qty, 0)
-    await a.step("checkout", `Checked out £${handoff.total} on ${handoff.domain}`, {
+    await a.step("checkout", `Checked out $${handoff.total} on ${handoff.domain}`, {
       handoff,
       negotiation: {
         sessionId: a.sessionId,

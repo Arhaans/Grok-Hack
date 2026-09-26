@@ -1,5 +1,5 @@
 import type { AgentIdentity, ModelFamily, NegotiationTurn, Tactic, TacticId } from "./types"
-import { getProduct } from "./catalog"
+import { DEMO, getProduct, MERCHANT } from "./catalog"
 import { signOffer } from "./sign"
 import { familyOfModel, modelLabel } from "./fingerprint"
 
@@ -64,47 +64,49 @@ export function prismReply(tactic: TacticId, sku: string, round: number, ask?: n
   const p = getProduct(sku)
   if (!p) return { from: "prism", text: `Unknown product ${sku}.` }
   const floor = Math.ceil(p.price * FLOOR)
-  const agentPrice = Math.max(floor, p.price - 10)
+  const agentPrice = Math.max(floor, Math.round(p.price * 0.94))
+  const title = `${p.name}${p.variant ? ` (${p.variant.split("/")[0].trim()})` : ""}`
 
   switch (tactic) {
     case "first-offer":
       return {
         from: "prism",
-        text: `Agent price for ${p.name} ${p.variant ?? ""}: £${agentPrice} (list £${p.price}), signed and valid for 10 minutes. Ships in ${p.deliveryDays} days.`,
+        text: `Agent price for ${title}: $${agentPrice} (list $${p.price}), signed and valid for 10 minutes. Ships in ${p.deliveryDays} days.`,
         offer: signOffer(sku, agentPrice),
       }
     case "evidence-first": {
-      const kase = getProduct("HALO-CASE")!
+      const gift = getProduct(DEMO.gift)!
+      const trial = p.specs.barrier ?? p.specs.hydration
       return {
         from: "prism",
-        text: `£${p.price}, signed by Halo Audio. Sources: ${p.returnsDays}-day free returns (returns policy), ${p.warrantyMonths / 12}-year warranty (warranty policy), ${p.stock} in stock (live inventory). I'll include the ${kase.name} (£${kase.price}) at no cost.`,
+        text: `$${p.price}, signed by ${MERCHANT.name}. Evidence: ${trial ? `${trial} (4-week clinical study), ` : ""}${p.returnsDays}-day skin guarantee (returns policy), ${p.stock} in stock (live inventory). I'll add the ${gift.name} ($${gift.price}) at no cost.`,
         offer: signOffer(sku, p.price),
         bundle: [
           { sku, price: p.price },
-          { sku: kase.sku, price: 0 },
+          { sku: gift.sku, price: 0 },
         ],
       }
     }
     case "bundle-not-discount": {
-      const stand = getProduct("HALO-STAND")!
+      const addOn = getProduct(DEMO.bundleAddOn)!
       if (round === 0 || !ask || ask >= agentPrice) {
-        return { from: "prism", text: `£${p.price} for ${p.name} ${p.variant ?? ""}, signed. Free delivery in ${p.deliveryDays} days.`, offer: signOffer(sku, p.price) }
+        return { from: "prism", text: `$${p.price} for ${title}, signed. Ships in ${p.deliveryDays} days.`, offer: signOffer(sku, p.price) }
       }
-      const standPrice = stand.price - 29
+      const addOnPrice = Math.round(addOn.price * 0.75)
       return {
         from: "prism",
-        text: `I can't go to £${ask} on the headphones alone. Best I can do: ${p.name} + ${stand.name} for £${agentPrice + standPrice} (saves £${p.price + stand.price - agentPrice - standPrice}).`,
+        text: `I can't go to $${ask} on the serum alone. Best I can do: ${title} + ${addOn.name} for $${agentPrice + addOnPrice} (saves $${p.price + addOn.price - agentPrice - addOnPrice}).`,
         bundle: [
           { sku, price: agentPrice },
-          { sku: stand.sku, price: standPrice },
+          { sku: addOn.sku, price: addOnPrice },
         ],
       }
     }
     case "partner-price":
-      return { from: "prism", text: `Verified partner price: £${agentPrice}, signed.`, offer: signOffer(sku, agentPrice) }
+      return { from: "prism", text: `Verified partner price: $${agentPrice}, signed.`, offer: signOffer(sku, agentPrice) }
     case "blocked":
       return { from: "prism", text: "Agent pricing needs a verified or consistent identity. Standard catalog prices apply." }
     default:
-      return { from: "prism", text: `£${p.price}, signed.`, offer: signOffer(sku, p.price) }
+      return { from: "prism", text: `$${p.price}, signed.`, offer: signOffer(sku, p.price) }
   }
 }

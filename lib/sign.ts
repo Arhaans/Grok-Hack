@@ -25,7 +25,7 @@ export function signOffer(sku: string, price: number): SignedOffer {
   const base = {
     sku,
     price,
-    currency: "GBP" as const,
+    currency: "USD" as const,
     merchant: MERCHANT.id,
     checkoutDomain: MERCHANT.checkoutDomain,
     expires: Date.now() + 60 * 60 * 1000,

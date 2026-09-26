@@ -13,8 +13,8 @@ export async function POST(req: Request) {
     sessionIdFor(req),
     "verify",
     result.valid
-      ? `Offer for ${b.offer.sku} at £${b.offer.price} verified as genuine`
-      : `Offer for ${b.offer.sku} at £${b.offer.price}${b.seenAt ? ` seen on ${b.seenAt}` : ""} failed verification`,
+      ? `Offer for ${b.offer.sku} at $${b.offer.price} verified as genuine`
+      : `Offer for ${b.offer.sku} at $${b.offer.price}${b.seenAt ? ` seen on ${b.seenAt}` : ""} failed verification`,
     { offer: b.offer, ...result },
   )
   return json(result)

@@ -27,7 +27,7 @@ export async function speak(opts: {
       messages: [
         {
           role: "system",
-          content: `${opts.persona} You are the BUYER, writing to the merchant Halo Audio. Write exactly ONE short sentence (max 25 words). Prices are in pounds (£). Never invent prices. No preamble, no quotes, no emojis.`,
+          content: `${opts.persona} You are the BUYER, writing to the merchant Prism Skincare. Write exactly ONE short sentence (max 25 words). Prices are in US dollars ($). Never invent prices. No preamble, no quotes, no emojis.`,
         },
         { role: "user", content: opts.instruction },
       ],
@@ -47,8 +47,8 @@ export async function speak(opts: {
     if (!text || text.length > 220) throw new Error("bad line")
     if (opts.mustInclude?.some((s) => !text.includes(s))) throw new Error("dropped a required detail")
     // guard against role confusion and invented prices
-    if (/\$|we have|our store|i can offer you|special promotion/i.test(text)) throw new Error("off-script line")
-    if (!opts.mustInclude && /£\d/.test(text)) throw new Error("invented a price")
+    if (/£|€|we have|our store|i can offer you|special promotion/i.test(text)) throw new Error("off-script line")
+    if (!opts.mustInclude && /\$\d/.test(text)) throw new Error("invented a price")
     return { text, voice: `${model} (local)` }
   } catch {
     return { text: opts.fallback, voice: "scripted" }

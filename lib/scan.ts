@@ -19,7 +19,7 @@ function diff(clone: CloneStore): Incident["changedFields"] {
   for (const cp of clone.products) {
     const ours = getProduct(cp.sku)
     if (!ours) continue
-    if (cp.price !== ours.price) out.push({ sku: cp.sku, field: "price", ours: `£${ours.price}`, theirs: `£${cp.price}` })
+    if (cp.price !== ours.price) out.push({ sku: cp.sku, field: "price", ours: `$${ours.price}`, theirs: `$${cp.price}` })
     if (cp.returnsDays !== ours.returnsDays)
       out.push({ sku: cp.sku, field: "returns", ours: `${ours.returnsDays} days`, theirs: cp.returnsDays ? `${cp.returnsDays} days` : "No returns" })
     if (cp.deliveryDays !== ours.deliveryDays)

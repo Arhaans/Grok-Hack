@@ -38,7 +38,7 @@ export type PrismEvent = {
   sessionId: string
   kind: PrismEventKind
   summary: string
-  data?: unknown                // for "question": { topic: "returns" | "shipping" | "warranty" }
+  data?: unknown                // for "question": { topic: "returns" | "shipping" | "ingredients" }
 }
 
 export type Incident = {
@@ -73,7 +73,7 @@ export type ModelFamilyStats = {
   tactic: string                // tactic currently used for this family
   sessions: number
   conversionRate: number        // 0–1
-  avgOrderValue: number         // GBP
+  avgOrderValue: number         // USD
 }
 
 // ---------- Catalog + agent-facing formats ----------
@@ -82,8 +82,8 @@ export type Product = {
   sku: string
   name: string
   variant?: string
-  family: string                // groups variants, e.g. "halo"
-  price: number                 // GBP
+  family: string                // groups variants, e.g. "barrier-repair-serum"
+  price: number                 // USD
   stock: number
   deliveryDays: number
   returnsDays: number
@@ -96,7 +96,7 @@ export type Product = {
 export type SignedOffer = {
   sku: string
   price: number
-  currency: "GBP"
+  currency: "USD"
   merchant: string
   checkoutDomain: string
   expires: number
@@ -138,7 +138,7 @@ export type Cart = {
   sessionId: string
   items: { sku: string; qty: number; price: number }[]
   total: number
-  currency: "GBP"
+  currency: "USD"
 }
 
 export type CheckoutHandoff = {

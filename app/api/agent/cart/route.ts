@@ -27,9 +27,9 @@ export async function POST(req: Request) {
     sessionId,
     items,
     total: items.reduce((s, i) => s + i.price * i.qty, 0),
-    currency: "GBP",
+    currency: "USD",
   }
   store().carts.set(cart.id, cart)
-  logEvent(sessionId, "cart", `${identity.claimed ?? "Unknown agent"} built a cart: ${items.map((i) => `${i.qty}× ${i.sku}`).join(", ")} (£${cart.total})`, cart)
+  logEvent(sessionId, "cart", `${identity.claimed ?? "Unknown agent"} built a cart: ${items.map((i) => `${i.qty}× ${i.sku}`).join(", ")} ($${cart.total})`, cart)
   return json({ ...cart, prism: { sessionId } })
 }

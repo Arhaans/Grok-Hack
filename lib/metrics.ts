@@ -12,7 +12,7 @@ const SEED = {
   cart: 47,
   checkout: 31,
   cloneIncidents: 2,
-  questions: { returns: 88, shipping: 64, warranty: 23 } as Record<string, number>,
+  questions: { returns: 88, shipping: 64, ingredients: 41 } as Record<string, number>,
   // per model family: sessions, conversions, revenue (labelled demo history)
   byModel: {
     openai: { label: "GPT-4o", sessions: 64, converted: 21, revenue: 7119 },

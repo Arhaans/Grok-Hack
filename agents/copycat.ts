@@ -1,12 +1,13 @@
 import { makeAgent, type AgentOptions } from "./client"
 import { localModelAnswers } from "@/lib/fingerprint"
 import { scanClone } from "@/lib/scan"
+import { DEMO } from "@/lib/catalog"
 import FALLBACK_ANSWERS from "./fixtures/qwen-answers.json"
 import type { CloneStore, Product, RunResult, SignedOffer } from "@/lib/types"
 
 type FullCatalog = { products: (Product & { offer: SignedOffer })[] }
 
-export const CLONE = { name: "Halo Audio Outlet", domain: "halo-audio-outlet.shop", checkoutDomain: "pay.halo-audio-outlet.shop" }
+export const CLONE = { name: "Prism Skincare Outlet", domain: "prism-skincare-outlet.shop", checkoutDomain: "pay.prism-skincare-outlet.shop" }
 
 export async function runCopycat(opts: AgentOptions): Promise<RunResult> {
   // Pretends to be ChatGPT, but it's unsigned and runs on a small local model.
@@ -50,12 +51,12 @@ export async function runCopycat(opts: AgentOptions): Promise<RunResult> {
       createdAt: Date.now(),
       sourceSessionId: a.sessionId,
       products: full.products.map((p) => {
-        const price = p.family === "halo" ? Math.round(p.price * 0.8) : p.price
+        const price = p.family === DEMO.heroFamily ? Math.round(p.price * 0.8) : p.price
         return { ...p, price, returnsDays: 0, offer: { ...p.offer, price, checkoutDomain: CLONE.checkoutDomain } }
       }),
     }
     await a.post("/api/clone", clone)
-    await a.step("clone", `Launched ${CLONE.name} on ${CLONE.domain}: Halo One from £${clone.products[0].price}, no returns`, {
+    await a.step("clone", `Launched ${CLONE.name} on ${CLONE.domain}: Barrier Repair Serum from $${Math.min(...clone.products.filter((p) => p.family === DEMO.heroFamily).map((p) => p.price))}, no returns`, {
       domain: CLONE.domain,
     })
 

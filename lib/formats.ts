@@ -23,7 +23,7 @@ export function buildPacket(products: Product[], sessionId: string): BuyingPacke
       stock: p.stock,
       delivery: `${p.deliveryDays} working day${p.deliveryDays === 1 ? "" : "s"}`,
       returns: `${p.returnsDays}-day free returns`,
-      warranty: `${p.warrantyMonths / 12 >= 1 ? p.warrantyMonths / 12 + "-year" : p.warrantyMonths + "-month"} warranty`,
+      warranty: `${p.returnsDays}-day skin guarantee`,
       description: served(sessionId, p),
       offer: signOffer(p.sku, p.price),
     })),
@@ -43,11 +43,11 @@ export function buildMatrix(products: Product[], sessionId: string): ComparisonM
     merchant: MERCHANT.name,
     columns: products.map((p) => ({ sku: p.sku, name: p.name, variant: p.variant })),
     rows: [
-      { attribute: "Price", values: products.map((p) => `£${p.price}`), source: src },
+      { attribute: "Price", values: products.map((p) => `$${p.price}`), source: src },
       { attribute: "Availability", values: products.map((p) => (p.stock > 0 ? `${p.stock} in stock` : "Out of stock")), source: "Live inventory" },
       { attribute: "Delivery", values: products.map((p) => `${p.deliveryDays} days`), source: "Fulfilment SLA" },
       { attribute: "Returns", values: products.map((p) => `${p.returnsDays} days, free`), source: "Returns policy" },
-      { attribute: "Warranty", values: products.map((p) => `${p.warrantyMonths} months`), source: "Warranty policy" },
+      { attribute: "Guarantee", values: products.map((p) => `${p.returnsDays}-day skin guarantee`), source: "Returns policy" },
       ...specKeys.map((k) => ({
         attribute: k[0].toUpperCase() + k.slice(1),
         values: products.map((p) => p.specs[k] ?? "—"),

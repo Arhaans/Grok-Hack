@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "store:build": "cd stores/prism-skincare && npm install --no-audit --no-fund --silent && npx vite build --outDir ../../public/store --emptyOutDir"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

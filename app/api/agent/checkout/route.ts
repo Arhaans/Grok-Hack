@@ -18,6 +18,6 @@ export async function POST(req: Request) {
     total: cart.total,
     receiptSignature: hmac(`${cart.id}|${cart.total}|${MERCHANT.checkoutDomain}`),
   }
-  logEvent(sessionId, "checkout", `${identity.claimed ?? "Unknown agent"} handed off to checkout on ${MERCHANT.checkoutDomain} (£${cart.total})`, handoff)
+  logEvent(sessionId, "checkout", `${identity.claimed ?? "Unknown agent"} handed off to checkout on ${MERCHANT.checkoutDomain} ($${cart.total})`, handoff)
   return json({ ...handoff, prism: { sessionId } })
 }

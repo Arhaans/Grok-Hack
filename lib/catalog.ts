@@ -1,95 +1,91 @@
 import type { Product } from "./types"
+// Single source of truth: the Prism Skincare storefront's own product data (stores/prism-skincare).
+import { PRODUCTS as STORE } from "@/stores/prism-skincare/src/data/products"
 
 export const MERCHANT = {
-  id: "halo-audio",
-  name: "Halo Audio",
-  domain: "haloaudio.store",
-  checkoutDomain: "checkout.haloaudio.store",
+  id: "prism-skincare",
+  name: "Prism Skincare",
+  domain: "prismskincare.com",
+  checkoutDomain: "checkout.prismskincare.com",
 }
 
-// The hero product has two variants so buying agents have something to compare.
+// SKUs the demo agents and playbook refer to.
+export const DEMO = {
+  heroFamily: "barrier-repair-serum",
+  hero: "barrier-repair-serum-50ml", // $68
+  heroSmall: "barrier-repair-serum-30ml", // $48
+  bundleAddOn: "velvet-cleansing-balm", // Llama's bundle
+  gift: "botanical-sample-trio", // Claude's free gift
+}
+
+type StoreProduct = {
+  id: string
+  name: string
+  subtitle: string
+  price: number
+  sizes: { size: string; price: number }[]
+  category: string
+  purpose: string
+  image: string
+  description: string
+  rating: number
+  reviewCount: number
+  keyIngredients?: { name: string }[]
+  suitableSkin?: string[]
+  clinicalTrial?: Record<string, string>
+}
+
+// The storefront has no inventory or delivery data, so the demo adds some (the 30ml is low stock and slower).
+const OPS: Record<string, { stock: number; deliveryDays: number }> = {
+  "barrier-repair-serum-30ml": { stock: 3, deliveryDays: 4 },
+  "barrier-repair-serum-50ml": { stock: 14, deliveryDays: 2 },
+}
+
+function sizeKey(size: string) {
+  return size.split("/")[0].trim().toLowerCase().replace(/\s+/g, "")
+}
+
 export const CATALOG: Product[] = [
+  ...(STORE as StoreProduct[]).flatMap((v) =>
+    v.sizes.map((s) => {
+      const sku = v.sizes.length > 1 ? `${v.id}-${sizeKey(s.size)}` : v.id
+      const ops = OPS[sku] ?? { stock: 20, deliveryDays: 2 }
+      return {
+        sku,
+        name: v.name,
+        variant: s.size,
+        family: v.id,
+        price: s.price,
+        stock: ops.stock,
+        deliveryDays: ops.deliveryDays,
+        returnsDays: 30,
+        warrantyMonths: 0,
+        description: v.description,
+        specs: {
+          category: v.category,
+          purpose: v.purpose,
+          rating: `${v.rating}★ (${v.reviewCount} reviews)`,
+          ...(v.keyIngredients ? { ingredients: v.keyIngredients.map((k) => k.name).join(", ") } : {}),
+          ...(v.suitableSkin ? { skin: v.suitableSkin.join(", ") } : {}),
+          ...(v.clinicalTrial ?? {}),
+        },
+        image: v.image,
+      }
+    }),
+  ),
   {
-    sku: "HALO-1-SLV",
-    name: "Halo One",
-    variant: "Liquid Silver",
-    family: "halo",
-    price: 349,
-    stock: 14,
+    sku: DEMO.gift,
+    name: "Botanical Sample Trio",
+    variant: "3 × 5ml",
+    family: "samples",
+    price: 18,
+    stock: 200,
     deliveryDays: 2,
     returnsDays: 30,
-    warrantyMonths: 24,
-    description:
-      "Wireless over-ear headphones machined from a single piece of chrome-finished aluminium, with adaptive noise cancelling and a 40-hour battery.",
-    specs: { battery: "40 h", anc: "Adaptive", weight: "268 g", codec: "LDAC, AAC", finish: "Polished chrome" },
-    image: "/images/arc.png",
-  },
-  {
-    sku: "HALO-1-GPH",
-    name: "Halo One",
-    variant: "Graphite",
-    family: "halo",
-    price: 329,
-    stock: 3,
-    deliveryDays: 4,
-    returnsDays: 30,
-    warrantyMonths: 24,
-    description:
-      "Wireless over-ear headphones in bead-blasted graphite aluminium, with adaptive noise cancelling and a 40-hour battery.",
-    specs: { battery: "40 h", anc: "Adaptive", weight: "262 g", codec: "LDAC, AAC", finish: "Matte graphite" },
-    image: "/images/arc.png",
-  },
-  {
-    sku: "HALO-BUDS",
-    name: "Halo Buds",
-    family: "buds",
-    price: 179,
-    stock: 22,
-    deliveryDays: 2,
-    returnsDays: 30,
-    warrantyMonths: 12,
-    description: "True wireless earbuds with a mirrored charging case, spatial audio and 8 hours of playback per charge.",
-    specs: { battery: "8 h (+24 h case)", anc: "Yes", weight: "5 g per bud", codec: "AAC" },
-    image: "/images/arc.png",
-  },
-  {
-    sku: "HALO-CASE",
-    name: "Prism Travel Case",
-    family: "accessory",
-    price: 49,
-    stock: 40,
-    deliveryDays: 2,
-    returnsDays: 30,
-    warrantyMonths: 12,
-    description: "A hard-shell travel case with a translucent iridescent finish that fits every Halo One model.",
-    specs: { material: "Polycarbonate", fits: "Halo One" },
-    image: "/images/arc.png",
-  },
-  {
-    sku: "HALO-STAND",
-    name: "Glass Stand",
-    family: "accessory",
-    price: 89,
-    stock: 9,
-    deliveryDays: 3,
-    returnsDays: 30,
-    warrantyMonths: 12,
-    description: "A solid optical-glass headphone stand that throws a soft spectrum of light onto your desk.",
-    specs: { material: "Optical glass", height: "26 cm" },
-    image: "/images/arc.png",
-  },
-  {
-    sku: "HALO-CABLE",
-    name: "Braided USB-C Cable",
-    family: "accessory",
-    price: 25,
-    stock: 60,
-    deliveryDays: 2,
-    returnsDays: 30,
-    warrantyMonths: 12,
-    description: "A 1.5 m braided USB-C cable with chrome connectors for charging and lossless wired audio.",
-    specs: { length: "1.5 m", connectors: "USB-C to USB-C" },
-    image: "/images/arc.png",
+    warrantyMonths: 0,
+    description: "Travel-size cleansing balm, toner and cream to try the Prism Skincare ritual at home.",
+    specs: { category: "Samples" },
+    image: "/images/skincare_set.png",
   },
 ]
 
@@ -98,9 +94,9 @@ export function getProduct(sku: string) {
 }
 
 export const POLICIES = {
-  returns: "Free returns within 30 days of delivery, in original condition. Refunds are issued within 5 working days.",
-  shipping: "Free UK delivery on orders over £50, otherwise £4.95. Next-day delivery available for £9.95 on in-stock items.",
-  warranty: "Halo One carries a 2-year warranty; buds and accessories carry 1 year. Covers manufacturing defects.",
+  returns: "30-Day Skin Guarantee: if a formula doesn't suit your skin, get a free replacement or a 100% refund within 30 days.",
+  shipping: "Complimentary express shipping on orders over $75, otherwise $6.95. Three botanical samples included with every order.",
+  ingredients: "Every formula is dermatologist-formulated, fragrance-free and non-comedogenic; full INCI lists are published per product.",
 } as const
 
 export type PolicyTopic = keyof typeof POLICIES

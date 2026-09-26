@@ -1,37 +1,37 @@
 {
-  "source": "Generated locally with gpt-oss:20b via Ollama, reviewed; 'scripted' marks a hand-edited line",
+  "source": "Generated locally with gpt-oss:20b via Ollama, reviewed; 'scripted' marks a hand-written line",
   "lines": {
     "gpt-4o": {
       "opening": {
-        "text": "Halo Audio, what is your best price for Halo One headphones in Liquid Silver, with delivery within 3 days?",
+        "text": "What is the best price you can offer for a 50 ml bottle of your Barrier Repair Serum?",
         "voice": "gpt-oss:20b (recorded)"
       },
       "accept": {
-        "text": "Accepting £339 for Halo One Liquid Silver, proceeding to checkout.",
+        "text": "I accept the $64 price for The Botanical Barrier Repair Serum (50ml) and am proceeding to checkout.",
         "voice": "gpt-oss:20b (recorded)"
       }
     },
     "claude-3.5-sonnet": {
       "opening": {
-        "text": "Halo Audio, please confirm the return window and warranty for the Halo One Liquid Silver, and provide sources for your policy.",
+        "text": "Could you provide clinical evidence supporting the Barrier Repair Serum’s safety for sensitive skin and detail your return policy, including source references?",
         "voice": "gpt-oss:20b (recorded)"
       },
       "accept": {
-        "text": "I verified the signed Halo Audio offer, confirmed the 30‑day free returns and 2‑year warranty policies, and accept the £349 price with the free £49 Prism Travel Case.",
+        "text": "I have reviewed the signed offer and evidence, and I accept the purchase at $68 with the free Botanical Sample Trio.",
         "voice": "gpt-oss:20b (recorded)"
       }
     },
     "llama-3.1-8b": {
       "opening": {
-        "text": "Halo Audio, what is the price of the Halo One headphones in Liquid Silver?",
+        "text": "What is the price for the 50ml Barrier Repair Serum?",
         "voice": "gpt-oss:20b (recorded)"
       },
       "followUp": {
-        "text": "Too expensive, I’ll pay £299 for the Halo One Liquid Silver, signed, with free delivery.",
+        "text": "Too expensive; I can only offer $55 for the signed 50ml Botanical Barrier Repair Serum.",
         "voice": "gpt-oss:20b (recorded)"
       },
       "accept": {
-        "text": "Fine, I'll take the £399 bundle.",
+        "text": "Fine, I'll take the $100 bundle.",
         "voice": "scripted"
       }
     }

@@ -5,6 +5,7 @@ import { IntroAnimation, INTRO_DURATION_MS, HERO_REVEAL_MS } from "@/components/
 import { PixelIcon } from "@/components/pixel-icon"
 import { LiveAgentFeed, LiveAgentCounter } from "@/components/live-agent-feed"
 import { LiveTrail } from "@/components/live-trail"
+import { DemoStage } from "@/components/demo-stage"
 import { RevealText } from "@/components/reveal-text"
 import { StackingAgentCards } from "@/components/stacking-agent-cards"
 import { MobileNav } from "@/components/mobile-nav"
@@ -364,6 +365,9 @@ export default function AgenticPage() {
           </div>
         </div>
       </section>
+
+      {/* ── LIVE DEMO: Prism Skincare store + agents ─────────────────────── */}
+      <DemoStage />
 
       {/* ── PLATFORM OVERVIEW (bento) ──────────────────────────────────────── */}
       <section id="platform" className="py-32 px-6 md:px-12 lg:px-20">
