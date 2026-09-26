@@ -36,7 +36,6 @@ A beam of light enters a prism and splits into agent spectra.
 | 🔵 Blue | Buying agent | The product breaks apart into a buying packet (SKU, stock, delivery, returns). The agent compares two variants and builds a real cart. |
 | 🟣 Violet | Research agent | The *same* catalog becomes a side-by-side evidence matrix |
 | 🔴 Red | Copycat | A harvesting agent claims to be ChatGPT, but has no signature and its probe answers fingerprint as a different model. It scrapes the catalog, and an evil-twin store appears with a changed price. Prism draws a glowing line from the copied marker back to the exact session that took it. |
-
 | 🤝 Lineup | Three shopping agents: GPT-4o, Claude, Llama | Prism fingerprints each one and negotiates differently: GPT-4o takes a £339 first offer, Claude gets sourced evidence and a free case at £349, Llama haggles and leaves with a £399 bundle. |
 
 **The finale:** the buying agent checks both stores, sees that the clone's offers aren't signed by the merchant and its checkout is on the wrong domain, rejects it, and completes checkout with the real store.
@@ -87,13 +86,14 @@ API
   GET  /api/agent/catalog      format adapts to the agent: buying packet or comparison matrix
   GET  /api/agent/policy?topic=  returns | shipping | warranty (logged as a "question" for Learn)
   GET  /api/agent/handshake    8 probe questions for agents that talk back
+  POST /api/agent/negotiate    Prism's reply, tactic chosen by model family (signed offers)
   POST /api/agent/cart         build a cart
   POST /api/agent/checkout     checkout handoff: legit URL + signed offer
   GET  /api/prism/events       live event feed (console polls every 1s)
   GET  /api/prism/metrics      Learn panel numbers + drop-off funnel
   POST /api/prism/probe        agent's handshake answers → sidecar → modelGuess on the identity
   POST /api/prism/scan         scan /clone for our markers → provenance incident
-  POST /api/demo/run?agent=    start a bot run: buyer | researcher | copycat
+  POST /api/demo/run?agent=    start a bot run: buyer | researcher | copycat | shopper&model=…
 
 lib/
   types.ts       shared contract (see below). Talk before changing it.
@@ -104,11 +104,14 @@ lib/
   sign.ts        HMAC signing for offers and the verified agent
   events.ts      in-memory event log (on globalThis so dev reloads don't wipe it)
   metrics.ts     events → Learn numbers (+ seeded, clearly labelled demo history)
+  playbook.ts    negotiation tactic per model family
+  fingerprint.ts LLMmap probes + sidecar client
 
 agents/
   buyer.ts       Grok-powered buyer with a scripted fallback
   researcher.ts  scripted research agent
   copycat.ts     spoofs "ChatGPT-User", no signature, scrapes everything, writes clone data
+  shopper.ts     GPT-4o / Claude / Llama shoppers (recorded handshakes, scripted negotiation)
 
 fingerprint/     Python sidecar (FastAPI + LLMmap)
   server.py      POST /fingerprint {answers: string[8]} → top-3 model guesses + distances
