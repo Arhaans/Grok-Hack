@@ -49,24 +49,25 @@ pnpm install
 pnpm dev          # http://localhost:3000
 ```
 
-Env vars (in `.env.local`, never commit):
+Env vars: copy `.env.example` to `.env.local` (never commit it). Everything works without them; Grok just falls back to the scripted buyer.
 
 ```bash
-XAI_API_KEY=...            # Grok, for the live buyer agent (optional, scripted fallback works without it)
-PRISM_SIGNING_SECRET=...   # signs merchant offers + the verified buyer agent's requests
-FINGERPRINT_URL=http://localhost:8000   # LLMmap sidecar (optional, identity cards skip the model row without it)
+XAI_API_KEY=...                         # Grok makes the buyer's final decision (scripted fallback without it)
+XAI_MODEL=                              # optional, auto-picked from your xAI account if empty
+PRISM_SIGNING_SECRET=...                # signs merchant offers
+FINGERPRINT_URL=http://localhost:8765   # LLMmap sidecar (optional)
 ```
 
 ### LLMmap fingerprint sidecar (optional)
 
-A small Python service that wraps [LLMmap](https://github.com/pasquini-dario/LLMmap). It needs Python 3.11 and downloads about 2 GB of models on first run, so **start it early on good Wi-Fi**.
+A small Python service wrapping [LLMmap](https://github.com/pasquini-dario/LLMmap). It fingerprints agents from their handshake answers and runs the copycat's "brain" (Qwen2.5-0.5B). Needs Python 3.11 and [uv](https://docs.astral.sh/uv/); the first start downloads ~2 GB of models.
 
 ```bash
-cd fingerprint
-uv venv -p 3.11 && source .venv/bin/activate
-uv pip install -r requirements.txt
-uvicorn server:app --port 8000
+./fingerprint/setup.sh                                                   # once
+fingerprint/.venv/bin/uvicorn --app-dir fingerprint server:app --port 8765
 ```
+
+Without the sidecar the demo still runs: the fingerprint row is simply skipped.
 
 ## Architecture
 
@@ -172,11 +173,55 @@ export type Incident = {
 
 ---
 
+## API guide for the frontend
+
+All of this is live on `main`. Types are in `lib/types.ts`.
+
+**Running the demo from the UI**
+
+```ts
+await fetch("/api/prism/reset", { method: "POST" })                                    // clean slate
+const copycat: RunResult = await (await fetch("/api/demo/run?agent=copycat&probeAnswers=recorded", { method: "POST" })).json()
+const buyer: RunResult   = await (await fetch("/api/demo/run?agent=buyer", { method: "POST" })).json()
+const research: RunResult = await (await fetch("/api/demo/run?agent=researcher", { method: "POST" })).json()
+```
+
+- A run returns when the bot finishes. `steps[]` has a `label` for each line to show in a lane, plus `data` (packet, matrix, incident, ...).
+- `pace=600` (default) waits 600 ms between steps so the console feed fills in live. Use `pace=0` for instant runs.
+- Copycat: `probeAnswers=recorded` uses pre-recorded Qwen answers (~2 s). Without it, Qwen answers live (~15 s, needs the sidecar). LLMmap's fingerprint is computed live either way.
+- Copycat: `autoScan=0` stops Prism scanning automatically at the end, so you can trigger `POST /api/prism/scan` yourself for the reveal.
+- Buyer: `brain=scripted` forces the scripted decision even with a Grok key. `RunResult.brain` says which one decided.
+
+**Console polling**
+
+| Endpoint | Returns | Use for |
+|---|---|---|
+| `GET /api/prism/events?since=<lastEventId>` | `PrismState`: new `events`, all `identities`, `incidents`, `clone` | Live feed, identity cards, incident card. Poll every 1 s. |
+| `GET /api/prism/metrics` | `Metrics` (`seeded: true`, show an "includes demo history" tag) | Learn panel. `?live=1` for live-only numbers. |
+| `GET /api/clone` | `{ clone: CloneStore \| null }` | The `/clone` evil-twin page. **Render `description` exactly as returned**: it carries the invisible marker Prism finds. |
+| `POST /api/prism/scan` | `{ incident: Incident \| null }` | Manual "scan the clone" button |
+
+**What to draw where**
+
+- **Identity card:** `claimed`, `verified` (+ `verifiedAs`), `intent` + `confidence`, the `evidence[]` lines, a red flag when `impersonation`. When `modelGuess` exists: top-3 `model` + `distance` bars (lower = closer), "experimental" label, red badge if `contradictsClaim`, "unknown model" if `!inLibrary`.
+- **Provenance line:** `incident.copiedSnippet` on the clone → `incident.sourceSessionId` identity card, labelled with `incident.markerFound`. `changedFields` lists price/returns differences; `badCheckoutDomain` is the fake checkout.
+- **Blue lane:** buyer steps `fetch_packet` (packet in `data`), `ask_policy`, `compare`, `check_clone`, `reject_clone`, `decide`, `cart`, `checkout`.
+- **Red lane:** copycat steps `arrive`, `handshake`, `fingerprinted`, `scrape`, `clone`, `detected` (incident in `data`).
+- **Violet lane:** researcher step `fetch_matrix` has the `ComparisonMatrix` in `data`.
+
+**Agent-facing API** (what bots call; you mostly won't need these directly)
+
+`GET /api/agent/catalog?task=buy|research&format=packet|matrix|full&family=halo&skus=A,B` · `GET /api/agent/policy?topic=returns|shipping|warranty` · `GET /api/agent/handshake` · `POST /api/prism/probe` · `POST /api/agent/cart` · `POST /api/agent/checkout` · `POST /api/agent/verify-offer`
+
+**Demo store:** Halo Audio (`haloaudio.store`), hero product **Halo One** in *Liquid Silver* (£349, 2-day delivery) and *Graphite* (£329, 4-day, 3 left), plus buds, case, stand and cable. Edit `lib/catalog.ts` to change it. The clone is **Halo Audio Outlet** (`halo-audio-outlet.shop`), 20% cheaper with no returns.
+
+---
+
 ## Task board
 
 **Arhaan: backend and agents** · **Antonio: frontend and story**
 
-Only edit files in your own area. The one shared file is `lib/types.ts`, so message each other before changing it. Commit small, pull before you push. Flip ⬜ → ✅ as you finish tasks.
+Only edit files in your own area. The one shared file is `lib/types.ts`, so message each other before changing it. Commit small, pull before you push. Flip ⬜ → ✅ as you finish tasks (🟡 = built, needs a check).
 
 Estimates are for coding with AI help. P0 alone fills most of the time, so **finish every P0 before touching any P1**.
 
@@ -191,21 +236,21 @@ Estimates are for coding with AI help. P0 alone fills most of the time, so **fin
 
 | | # | Task | Pri | Est |
 |---|---|---|---|---|
-| ⬜ | A1 | `lib/catalog.ts`: 6 products with price, stock, delivery, returns | P0 | 15m |
-| ⬜ | A2 | `lib/events.ts` + `GET /api/prism/events` | P0 | 15m |
-| ⬜ | A3 | `lib/identify.ts`: request → `AgentIdentity` with confidence + evidence | P0 | 30m |
-| ⬜ | A4 | `lib/formats.ts` + `GET /api/agent/catalog`: buying packet / comparison matrix | P0 | 30m |
-| ⬜ | A5 | `lib/watermark.ts`: per-session marker (invisible characters + reworded-phrase backup) | P0 ⭐ | 25m |
-| ⬜ | A6 | `agents/copycat.ts`: spoofed user agent, scrape, write clone data with a changed price + fake checkout domain | P0 ⭐ | 20m |
-| ⬜ | A7 | `POST /api/prism/scan`: find markers on `/clone` → `Incident` | P0 ⭐ | 25m |
-| ⬜ | A8 | `lib/sign.ts` + `/api/agent/cart` + `/api/agent/checkout` with signed offers | P0 | 20m |
-| ⬜ | A9 | `agents/buyer.ts` scripted: packet → ask returns/shipping → compare variants → check real vs clone → reject clone → checkout | P0 | 25m |
-| ⬜ | A10 | `POST /api/demo/run?agent=` to trigger bots from the UI | P0 | 10m |
-| ⬜ | A11 | **Learn:** `/api/agent/policy?topic=` logs `question` events; `lib/metrics.ts` + `GET /api/prism/metrics` → `Metrics`; seed ~200 clearly-labelled demo sessions so the numbers aren't 3/3 | P1 | 20m |
-| ⬜ | A12 | **Fingerprint sidecar:** `fingerprint/server.py` (FastAPI) wrapping LLMmap: `POST /fingerprint` + `POST /answer` with Qwen2.5-0.5B-Instruct as the copycat's brain | P1 | 30m |
-| ⬜ | A13 | **Probe handshake:** `GET /api/agent/handshake` + `POST /api/prism/probe` → sidecar → `modelGuess` + evidence line on the identity; copycat answers via `/answer`; skip gracefully if the sidecar is down | P1 | 25m |
-| ⬜ | A14 | Grok (xAI API) as the buyer's brain, tools call our API, scripted fallback behind a flag | P1 | 40m |
-| ⬜ | A15 | `agents/researcher.ts` scripted | P1 | 10m |
+| ✅ | A1 | `lib/catalog.ts`: 6 products with price, stock, delivery, returns | P0 | 15m |
+| ✅ | A2 | `lib/events.ts` + `GET /api/prism/events` | P0 | 15m |
+| ✅ | A3 | `lib/identify.ts`: request → `AgentIdentity` with confidence + evidence | P0 | 30m |
+| ✅ | A4 | `lib/formats.ts` + `GET /api/agent/catalog`: buying packet / comparison matrix | P0 | 30m |
+| ✅ | A5 | `lib/watermark.ts`: per-session marker (invisible characters + reworded-phrase backup) | P0 ⭐ | 25m |
+| ✅ | A6 | `agents/copycat.ts`: spoofed user agent, scrape, write clone data with a changed price + fake checkout domain | P0 ⭐ | 20m |
+| ✅ | A7 | `POST /api/prism/scan`: find markers on `/clone` → `Incident` | P0 ⭐ | 25m |
+| ✅ | A8 | `lib/sign.ts` + `/api/agent/cart` + `/api/agent/checkout` with signed offers | P0 | 20m |
+| ✅ | A9 | `agents/buyer.ts` scripted: packet → ask returns/shipping → compare variants → check real vs clone → reject clone → checkout | P0 | 25m |
+| ✅ | A10 | `POST /api/demo/run?agent=` to trigger bots from the UI | P0 | 10m |
+| ✅ | A11 | **Learn:** `/api/agent/policy?topic=` logs `question` events; `lib/metrics.ts` + `GET /api/prism/metrics` → `Metrics`; seed ~200 clearly-labelled demo sessions so the numbers aren't 3/3 | P1 | 20m |
+| ✅ | A12 | **Fingerprint sidecar:** `fingerprint/server.py` (FastAPI) wrapping LLMmap: `POST /fingerprint` + `POST /answer` with Qwen2.5-0.5B-Instruct as the copycat's brain | P1 | 30m |
+| ✅ | A13 | **Probe handshake:** `GET /api/agent/handshake` + `POST /api/prism/probe` → sidecar → `modelGuess` + evidence line on the identity; copycat answers via `/answer`; skip gracefully if the sidecar is down | P1 | 25m |
+| 🟡 | A14 | Grok (xAI API) makes the buyer's final decision, scripted fallback. **Built, not yet tested with a real key**: add `XAI_API_KEY` to `.env.local` and run the buyer | P1 | 40m |
+| ✅ | A15 | `agents/researcher.ts` scripted | P1 | 10m |
 | ⬜ | A16 | Supabase for events | P2 | 30m |
 
 ### 🎨 Antonio: frontend and story
