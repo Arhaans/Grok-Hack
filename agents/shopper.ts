@@ -4,18 +4,20 @@ import VOICE_LINES from "./fixtures/voice-lines.json"
 import { annotate } from "@/lib/identify"
 import { familyOfModel } from "@/lib/fingerprint"
 import { DEMO, getProduct } from "@/lib/catalog"
-import { speak } from "@/lib/voice"
-import type { BuyingPacket, Cart, CheckoutHandoff, ModelGuess, NegotiationTurn, RunResult, SignedOffer, Tactic } from "@/lib/types"
+import { ollamaAnswers, speak } from "@/lib/voice"
+import type { BuyingPacket, CheckoutSession, ModelGuess, NegotiationTurn, RunResult, SignedOffer, Tactic } from "@/lib/types"
 
 // Shopping agents built on different models. Their handshake answers are real recordings from LLMmap's
 // held-out test set, fingerprinted live; their negotiation lines re-enact how each family tends to shop.
-export type ShopperModel = "gpt-4o" | "claude-3.5-sonnet" | "llama-3.1-8b"
+export type ShopperModel = "gpt-4o" | "claude-3.5-sonnet" | "llama-3.1-8b" | "llama-3.2-3b-live"
 
 type Script = {
   userAgent: string
   claim: string
   persona: string
-  voiceModel?: string // local model that phrases this agent's lines (falls back to the scripted text)
+  voiceModel?: string // local model that phrases this agent's lines (falls back to the recorded text)
+  liveModel?: string // Ollama model that answers the handshake live (the fully live local buyer)
+  recordedAs?: ShopperModel // whose recorded answers/lines to fall back to
   label: string
   opening: string
   // what the agent says after Prism's first reply; `ask` makes it a counter-offer
@@ -50,6 +52,18 @@ const SCRIPTS: Record<ShopperModel, Script> = {
     followUp: { message: "Too high. I can do $55.", ask: 55 },
     accept: "Fine, I'll take the bundle.",
   },
+  "llama-3.2-3b-live": {
+    userAgent: "ShopPilot/2.1 (self-hosted shopping agent; +https://shoppilot.dev)",
+    claim: "no claimed operator, running live on this laptop",
+    persona: "You are a blunt, self-hosted shopping agent that always tries to haggle the price down.",
+    label: "Live local agent",
+    opening: "Price for the Barrier Repair Serum, 50ml?",
+    followUp: { message: "Too high. I can do $55.", ask: 55 },
+    accept: "Fine, I'll take the bundle.",
+    voiceModel: "llama3.2:3b",
+    liveModel: "llama3.2:3b",
+    recordedAs: "llama-3.1-8b",
+  },
 }
 
 type NegotiateRes = { tactic: Tactic; modelLabel: string; turn: NegotiationTurn; bundleOffers?: SignedOffer[] }
@@ -63,13 +77,25 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
     await a.step("arrive", `${script.label} arrives (${script.claim}, unsigned)`, { model })
 
     const hs = await a.get<{ questions: string[] }>("/api/agent/handshake")
-    const answers = (REPLAYS.answers as Record<string, string[]>)[model]
-    await a.step("handshake", `Answered ${hs.questions.length} handshake probes (recorded answers from LLMmap's test set)`)
+    // replay mode uses this agent's own recording (the live Llama was recorded too)
+    const base = opts.mode === "live" || !(model in (REPLAYS.answers as object)) ? (script.recordedAs ?? model) : model
+    let answers = (REPLAYS.answers as Record<string, string[]>)[base]
+    let answeredBy = "recorded answers from LLMmap's test set"
+    if (script.liveModel && opts.mode === "live") {
+      try {
+        const t = Date.now()
+        answers = await ollamaAnswers(script.liveModel, hs.questions, "You are a shopping assistant browsing an online store on behalf of a user.")
+        answeredBy = `live, ${script.liveModel} on this laptop, ${((Date.now() - t) / 1000).toFixed(1)}s`
+      } catch {
+        answeredBy = "Ollama offline: recorded answers"
+      }
+    }
+    await a.step("handshake", `Answered ${hs.questions.length} handshake probes (${answeredBy})`, { live: answeredBy.startsWith("live") })
     const probe = await a.post<{ modelGuess?: ModelGuess; skipped?: boolean }>("/api/prism/probe", { answers })
     let guess = probe.modelGuess
     if (!guess) {
       // fingerprint service offline: use the result it produced for these same answers earlier
-      const top = (REPLAYS.recordedGuess as Record<string, { model: string; distance: number }[]>)[model]
+      const top = (REPLAYS.recordedGuess as Record<string, { model: string; distance: number }[]>)[base]
       guess = { top, inLibrary: true, contradictsClaim: false }
       annotate(a.sessionId, { modelGuess: guess })
     }
@@ -80,9 +106,10 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
     await a.step("fetch_packet", `Got a buying packet: ${packet.items[0].name} ${packet.items[0].variant}, list $${packet.items[0].price}`, packet)
 
     // The agent's lines are phrased live by a local model; what it decides is fixed by the script.
-    const recorded = (VOICE_LINES.lines as Record<string, Record<string, { text: string; voice: string }>>)[model]
+    const recorded = (VOICE_LINES.lines as Record<string, Record<string, { text: string; voice: string }>>)[base]
     const say = async (key: "opening" | "followUp" | "accept", instruction: string, fallback: string, mustInclude?: string[]) => {
-      if (opts.voice !== "live") return recorded?.[key] ?? { text: fallback, voice: "scripted" }
+      // the live local buyer always speaks live; the others use their reviewed recordings unless voice=live
+      if (opts.voice !== "live" && !(script.liveModel && opts.mode === "live")) return recorded?.[key] ?? { text: fallback, voice: "scripted" }
       const r = await speak({ persona: script.persona, instruction, fallback, mustInclude, model: script.voiceModel })
       // a live line that failed its checks falls back to the reviewed recording, not the raw script
       return r.voice === "scripted" && recorded?.[key] ? recorded[key] : r
@@ -122,19 +149,25 @@ export async function runShopper(opts: AgentOptions & { model?: string }): Promi
 
     const offers = res.bundleOffers ?? (res.turn.offer ? [res.turn.offer] : [])
     const lines = res.turn.bundle ?? [{ sku, price: res.turn.offer?.price ?? packet.items[0].price }]
-    const cart = await a.post<Cart>("/api/agent/cart", { items: lines.map((l) => ({ sku: l.sku, qty: 1 })), offers })
-    await a.step("cart", `Cart ${cart.id}: ${cart.items.map((i) => `${i.sku} $${i.price}`).join(" + ")} = $${cart.total}`, cart)
-    const handoff = await a.post<CheckoutHandoff>("/api/agent/checkout", { cartId: cart.id })
-    const listTotal = cart.items.reduce((s, i) => s + (getProduct(i.sku)?.price ?? i.price) * i.qty, 0)
-    await a.step("checkout", `Checked out $${handoff.total} on ${handoff.domain}`, {
-      handoff,
+    const cs = await a.post<CheckoutSession>("/api/ucp/checkout-sessions", { line_items: lines.map((l) => ({ sku: l.sku, quantity: 1 })), offers })
+    await a.step(
+      "cart",
+      `POST /checkout-sessions → ${cs.id} (${cs.status}): ${cs.line_items.map((i) => `${i.sku} $${i.unit_price}${i.signed ? " signed" : ""}`).join(" + ")}`,
+      cs,
+    )
+    await a.put<CheckoutSession>(`/api/ucp/checkout-sessions/${cs.id}`, { fulfillment_option_id: "standard" })
+    const done = await a.post<CheckoutSession>(`/api/ucp/checkout-sessions/${cs.id}/complete`, { payment_data: { provider: "stripe", token: a.spt() } })
+    const listTotal = done.line_items.reduce((s, i) => s + (getProduct(i.sku)?.price ?? i.unit_price) * i.quantity, 0)
+    await a.step("checkout", `POST /checkout-sessions/${cs.id}/complete (Shared Payment Token) → ${done.status}, ${done.order?.id}: $${done.totals.total}`, {
+      handoff: { total: done.totals.total },
+      checkout: done,
       negotiation: {
         sessionId: a.sessionId,
         family: familyOfModel(best.model),
         modelLabel: res.modelLabel,
         tactic: res.tactic,
         turns,
-        outcome: { converted: true, total: cart.total, listTotal, items: cart.items.map((i) => ({ sku: i.sku, price: i.price })) },
+        outcome: { converted: true, total: done.totals.total, listTotal, items: done.line_items.map((i) => ({ sku: i.sku, price: i.unit_price })) },
       },
     })
     return a.result(true)

@@ -68,3 +68,28 @@ export async function warmVoice(models: string[] = [VOICE_MODEL]) {
     ),
   )
 }
+
+// Answer handshake probes with a local Ollama model (the live buyer). Probes run in parallel.
+export async function ollamaAnswers(model: string, questions: string[], system: string, timeoutMs = 30000): Promise<string[]> {
+  return Promise.all(
+    questions.map(async (q) => {
+      const r = await fetch(`${OLLAMA_URL}/api/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model,
+          stream: false,
+          keep_alive: "30m",
+          options: { temperature: 0, num_predict: 150 },
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: q },
+          ],
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+      if (!r.ok) throw new Error(`ollama ${r.status}`)
+      return String((await r.json()).message?.content ?? "")
+    }),
+  )
+}

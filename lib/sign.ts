@@ -64,24 +64,35 @@ export const SIGNING_OPERATORS: { match: RegExp; family: string; label: string }
   { match: /GrokShopper/i, family: "xai", label: "Grok Shopper" },
 ]
 
-export function signAgentRequest(agentId: string, ts = Date.now()) {
+// Web Bot Auth style (RFC 9421 HTTP Message Signatures): Signature-Agent + Signature-Input + Signature.
+// Real agents sign with Ed25519 keys published at /.well-known/http-message-signatures-directory;
+// the demo uses a shared-secret HMAC with the same header shapes.
+export const AGENT_DIRECTORY: Record<string, string> = { "grok-shopper": "https://grok-shopper.agents.example" }
+
+export function signAgentRequest(agentId: string, ts = Date.now(), tag = "agent-browser-auth") {
   const entry = AGENT_REGISTRY[agentId]
   if (!entry) throw new Error(`unknown agent ${agentId}`)
+  const created = Math.floor(ts / 1000)
+  const sig = Buffer.from(hmac(`${agentId}|${created}|${tag}`, entry.secret), "hex").toString("base64")
   return {
-    "signature-agent": agentId,
-    "x-prism-agent-ts": String(ts),
-    "x-prism-agent-signature": hmac(`${agentId}|${ts}`, entry.secret),
+    "signature-agent": `"${AGENT_DIRECTORY[agentId]}"`,
+    "signature-input": `sig1=("@authority" "signature-agent");created=${created};expires=${created + 300};keyid="${agentId}";alg="hmac-sha256";tag="${tag}"`,
+    signature: `sig1=:${sig}:`,
   }
 }
 
-export function verifyAgentRequest(headers: Headers): { verified: boolean; agentId?: string; reason?: string } {
-  const agentId = headers.get("signature-agent")
-  const ts = headers.get("x-prism-agent-ts")
-  const sig = headers.get("x-prism-agent-signature")
-  if (!agentId || !ts || !sig) return { verified: false, reason: "no signature headers" }
-  const entry = AGENT_REGISTRY[agentId]
-  if (!entry) return { verified: false, reason: `unknown signer ${agentId}` }
-  if (Math.abs(Date.now() - Number(ts)) > 5 * 60 * 1000) return { verified: false, reason: "stale signature" }
-  if (!safeEqual(hmac(`${agentId}|${ts}`, entry.secret), sig)) return { verified: false, reason: "bad signature" }
-  return { verified: true, agentId }
+export function verifyAgentRequest(headers: Headers): { verified: boolean; agentId?: string; tag?: string; reason?: string } {
+  const input = headers.get("signature-input")
+  const sigHeader = headers.get("signature")
+  if (!input || !sigHeader) return { verified: false, reason: "no Web Bot Auth signature" }
+  const keyid = input.match(/keyid="([^"]+)"/)?.[1]
+  const created = Number(input.match(/created=(\d+)/)?.[1])
+  const tag = input.match(/tag="([^"]+)"/)?.[1] ?? ""
+  const sig = sigHeader.match(/sig1=:([^:]+):/)?.[1]
+  const entry = keyid ? AGENT_REGISTRY[keyid] : undefined
+  if (!keyid || !entry) return { verified: false, reason: `unknown keyid ${keyid ?? "(none)"}` }
+  if (!created || Math.abs(Date.now() / 1000 - created) > 300) return { verified: false, reason: "stale signature" }
+  const expected = Buffer.from(hmac(`${keyid}|${created}|${tag}`, entry.secret), "hex").toString("base64")
+  if (!sig || !safeEqual(expected, sig)) return { verified: false, reason: "bad signature" }
+  return { verified: true, agentId: keyid, tag }
 }

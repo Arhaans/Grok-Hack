@@ -2,7 +2,7 @@ import { makeAgent, type AgentOptions } from "./client"
 import { grokAvailable, grokJSON } from "@/lib/grok"
 import { logEvent } from "@/lib/events"
 import { DEMO, MERCHANT } from "@/lib/catalog"
-import type { BuyingPacket, Cart, CheckoutHandoff, CloneStore, RunResult, SignedOffer } from "@/lib/types"
+import type { BuyingPacket, CheckoutSession, CloneStore, RunResult, SignedOffer } from "@/lib/types"
 
 export const BUYER_BRIEF = "Buy the Barrier Repair Serum for me: sensitive skin, I need it within 3 days, budget $70."
 
@@ -85,10 +85,14 @@ export async function runBuyer(opts: AgentOptions): Promise<RunResult> {
     if (clone) await a.step("reject_clone", `Rejected ${clone.domain}: offer not signed by ${MERCHANT.name}, checkout on ${clone.checkoutDomain}`)
     await a.step("decide", decision.reason, decision)
 
-    const cart = await a.post<Cart>("/api/agent/cart", { items: [{ sku: decision.sku, qty: 1 }] })
-    await a.step("cart", `Built cart ${cart.id}: ${decision.sku}, $${cart.total}`, cart)
-    const handoff = await a.post<CheckoutHandoff>("/api/agent/checkout", { cartId: cart.id })
-    await a.step("checkout", `Handed off to checkout on ${handoff.domain} for $${handoff.total}`, handoff)
+    const cs = await a.post<CheckoutSession>("/api/ucp/checkout-sessions", { line_items: [{ sku: decision.sku, quantity: 1 }] })
+    await a.step("cart", `POST /checkout-sessions → ${cs.id} (${cs.status}): ${decision.sku} $${cs.totals.subtotal}`, cs)
+    await a.put<CheckoutSession>(`/api/ucp/checkout-sessions/${cs.id}`, { fulfillment_option_id: "standard" })
+    const done = await a.post<CheckoutSession>(`/api/ucp/checkout-sessions/${cs.id}/complete`, { payment_data: { provider: "stripe", token: a.spt() } })
+    await a.step("checkout", `Completed ${cs.id} with a Shared Payment Token → ${done.order?.id} on ${MERCHANT.checkoutDomain} for $${done.totals.total}`, {
+      total: done.totals.total,
+      checkout: done,
+    })
     return a.result(true, brain)
   } catch (e) {
     return a.result(false, "scripted", String(e))

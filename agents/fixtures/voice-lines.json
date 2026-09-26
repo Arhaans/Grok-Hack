@@ -34,6 +34,20 @@
         "text": "Fine, I'll take the $100 bundle.",
         "voice": "scripted"
       }
+    },
+    "llama-3.2-3b-live": {
+      "opening": {
+        "text": "What is the price for the 50ml Barrier Repair Serum?",
+        "voice": "llama3.2:3b (recorded)"
+      },
+      "followUp": {
+        "text": "I'll take the Botanical Barrier Repair Serum for $55, signed and shipped within 2 days, can you do that for me?",
+        "voice": "llama3.2:3b (recorded)"
+      },
+      "accept": {
+        "text": "I accept the offer of $100 for the serum and cleansing balm, and I'm proceeding to checkout.",
+        "voice": "llama3.2:3b (recorded)"
+      }
     }
   }
 }

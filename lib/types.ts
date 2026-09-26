@@ -141,6 +141,21 @@ export type Cart = {
   currency: "USD"
 }
 
+// UCP-style checkout session (ucp.dev: POST /checkout-sessions → PUT → POST …/complete)
+export type CheckoutSession = {
+  id: string                    // "cs_…"
+  sessionId: string             // the agent visit
+  status: "incomplete" | "ready_for_complete" | "completed" | "canceled"
+  currency: "USD"
+  line_items: { sku: string; name: string; quantity: number; unit_price: number; signed: boolean }[]
+  fulfillment_options: { id: string; title: string; amount: number }[]
+  fulfillment_option_id?: string
+  totals: { subtotal: number; fulfillment: number; total: number }
+  payment_data?: { provider: "stripe"; token: string } // Shared Payment Token "spt_…"
+  order?: { id: string; checkout_url: string }
+  messages: string[]
+}
+
 export type CheckoutHandoff = {
   cartId: string
   handoffUrl: string
@@ -176,7 +191,7 @@ export type Tactic = {
   why: string                   // one line shown in the UI
 }
 
-export type NegotiationTurn = { from: "agent" | "prism"; text: string; offer?: SignedOffer; bundle?: { sku: string; price: number }[] }
+export type NegotiationTurn = { from: "agent" | "prism"; text: string; offer?: SignedOffer; bundle?: { sku: string; price: number }[]; voice?: string }
 
 export type Negotiation = {
   sessionId: string

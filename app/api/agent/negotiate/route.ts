@@ -3,6 +3,7 @@ import { observe } from "@/lib/identify"
 import { bad, body, json } from "@/lib/http"
 import { pickTactic, prismReply } from "@/lib/playbook"
 import { signOffer } from "@/lib/sign"
+import { sellerSay } from "@/lib/seller"
 
 // POST /api/agent/negotiate { sku, round, message?, ask? } → Prism's reply, chosen by the agent's model family.
 export async function POST(req: Request) {
@@ -15,6 +16,10 @@ export async function POST(req: Request) {
   if (round === 0)
     logEvent(sessionId, "negotiation", `Prism identified ${modelLabel} → tactic "${tactic.name}"`, { tactic, family, modelLabel })
   const turn = prismReply(tactic.id, b.sku, round, b.ask ? Number(b.ask) : undefined)
+  // Claude (Sonnet) phrases the reply; the signed offer/bundle above is unchanged.
+  const said = await sellerSay({ turn, tactic, modelLabel, agentMessage: b.message, round, live: req.headers.get("x-prism-demo-mode") === "live" })
+  turn.text = said.text
+  turn.voice = said.voice
   // bundles come with one signed offer per line so the cart can honour them
   const bundleOffers = turn.bundle?.map((l) => signOffer(l.sku, l.price))
   logEvent(sessionId, "negotiation", `Prism: "${turn.text}"`, { from: "prism", round, tactic: tactic.id, turn })

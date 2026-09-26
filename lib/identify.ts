@@ -78,7 +78,7 @@ export function computeIdentity(t: SessionTrace): AgentIdentity {
   const evidence: string[] = []
   const op = SIGNING_OPERATORS.find((o) => o.match.test(t.userAgent))
 
-  if (verified) evidence.push(`Valid signature from registered agent "${t.verifiedAs}"`)
+  if (verified) evidence.push(`Valid Web Bot Auth signature (keyid "${t.verifiedAs}")`)
   else if (op) evidence.push(`Claims to be ${op.label}, unverified (no signature)`)
   else evidence.push("No agent signature")
 

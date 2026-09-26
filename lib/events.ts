@@ -1,4 +1,4 @@
-import type { AgentIdentity, Cart, CloneStore, Incident, ModelGuess, PrismEvent, PrismEventKind, PrismState } from "./types"
+import type { AgentIdentity, Cart, CheckoutSession, CloneStore, Incident, ModelGuess, PrismEvent, PrismEventKind, PrismState } from "./types"
 
 // Per-session behaviour Prism has observed. Identity is derived from this in identify.ts.
 export type SessionTrace = {
@@ -26,6 +26,7 @@ type Store = {
   sessions: Map<string, SessionTrace>
   incidents: Incident[]
   carts: Map<string, Cart>
+  checkouts: Map<string, CheckoutSession>
   clone: CloneStore | null
   markers: Map<string, string> // marker id → sessionId
 }
@@ -40,6 +41,7 @@ function fresh(): Store {
     sessions: new Map(),
     incidents: [],
     carts: new Map(),
+    checkouts: new Map(),
     clone: null,
     markers: new Map(),
   }

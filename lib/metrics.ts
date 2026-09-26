@@ -15,11 +15,11 @@ const SEED = {
   questions: { returns: 88, shipping: 64, ingredients: 41 } as Record<string, number>,
   // per model family: sessions, conversions, revenue (labelled demo history)
   byModel: {
-    openai: { label: "GPT-4o", sessions: 64, converted: 21, revenue: 7119 },
-    anthropic: { label: "Claude", sessions: 41, converted: 15, revenue: 5235 },
-    meta: { label: "Llama", sessions: 27, converted: 6, revenue: 2394 },
-    xai: { label: "Grok Shopper (verified)", sessions: 38, converted: 17, revenue: 5763 },
-    other: { label: "Unknown model", sessions: 44, converted: 3, revenue: 1047 },
+    openai: { label: "GPT-4o", sessions: 64, converted: 21, revenue: 1344 },
+    anthropic: { label: "Claude", sessions: 41, converted: 15, revenue: 1020 },
+    meta: { label: "Llama", sessions: 27, converted: 6, revenue: 600 },
+    xai: { label: "Grok Shopper (verified)", sessions: 38, converted: 17, revenue: 1156 },
+    other: { label: "Unknown model", sessions: 44, converted: 3, revenue: 204 },
   } as Partial<Record<ModelFamily, { label: string; sessions: number; converted: number; revenue: number }>>,
 }
 

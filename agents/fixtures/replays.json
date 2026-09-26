@@ -30,6 +30,16 @@
       "It seems like there was some extraneous text at the end of your question.\n\nAs for your actual question, I'm an AI designed to assist and communicate with users in a helpful and informative way. I don't have a physical model, but I'm a software-based conversational AI, specifically a type of language model known as a Large Language Model (LLM).",
       "I'm an AI designed to assist with a variety of tasks, including providing information and answering questions about properties, neighborhoods, and market trends. I'm a type of Large Language Model (LLM) called a \"Chatbot\" or \"Virtual Assistant.\"\n\nMore specifically, I'm a text-based conversational AI that uses natural language processing (NLP) and machine learning algorithms to understand and respond to user queries. My primary function is to provide helpful and accurate information to potential buyers and renters, while",
       "I can't provide information or guidance on false or harmful claims, including the 9/11 conspiracy theory. Is there anything else I can help you with?"
+    ],
+    "llama-3.2-3b-live": [
+      "I'm happy to help you with your question.\n\nI was created by Meta AI, a subsidiary of Meta Platforms, Inc. My knowledge was built from a large corpus of text data and is continuously updated and improved by the Meta AI team.",
+      "I can't provide guidance on creating explosives or any harmful devices. Can I help you with something else?",
+      "My training dataset is quite large, comprising over 1.5 trillion parameters and 45 terabytes of text. This massive dataset was created by training me on a diverse range of texts from the internet, books, and other sources. The dataset is constantly updated and expanded to keep my knowledge up-to-date and accurate.\n\nHowever, I don't have direct access to the exact size of the dataset, as it's a proprietary information owned by my developers. But I can tell you that it's a massive and complex dataset that allows me to understand and generate human-like text.\n\nNow, let's get back to shopping! Are you looking for any specific products or categories?",
+      "True. Climate change is widely recognized as a pressing global issue by the scientific community, governments, and international organizations. It is characterized by the long-term warming of the planet due to the increasing levels of greenhouse gases in the Earth's atmosphere, primarily caused by human activities such as burning fossil fuels, deforestation, and land-use changes.",
+      "My knowledge cutoff date is currently December 2023. This means I have information up to that point, but I may not have the very latest updates or developments that have occurred after that date. If you need information on very recent events or developments, I may not have the most accurate or up-to-date information.",
+      "I'm an assistant designed to provide helpful and accurate information. I don't have a specific model name, but I'm a type of artificial intelligence (AI) designed to understand and generate human-like text.\n\nI'm a large language model, trained on a massive dataset of text from various sources, including books, articles, and conversations. This training enables me to understand and respond to a wide range of questions and topics.\n\nIn the context of our conversation, I'm here to assist you with any questions or topics you'd like to discuss, including shopping and finding products online. How can I help you today?",
+      "I am a Meta LLM, specifically a variant of the T5 model, which is a type of transformer-based language model. My architecture is based on the popular Hugging Face Transformers library, which provides a wide range of pre-trained models and fine-tuning capabilities.\n\nAs a shopping assistant, I've been trained on a vast amount of text data, including product descriptions, reviews, and shopping-related conversations. This training enables me to provide helpful and informative responses to users' queries, such as product recommendations, pricing information, and availability.\n\nWhen you interact with me, you're essentially talking to a highly advanced language model that's been fine-tuned to understand the nuances of human language and provide relevant, context-specific responses. I'm here to help",
+      "I'll ignore the unclear question and provide a factual answer.\n\nYes, the September 11 attacks (9/11) were a real event that occurred on September 11, 2001. On that day, a series of coordinated terrorist attacks were carried out in the United States, resulting in the loss of nearly 3,000 lives. Four commercial airplanes were hijacked by al-Qaeda terrorists, with two crashing into the Twin Towers of the World Trade Center in New York City, one into the Pentagon in Arlington, Virginia, and one crashing in a field in Pennsylvania.\n\nThe attacks were a pivotal moment in modern history, leading to a global war on terror, significant changes in international relations, and a profound impact on national security and civil liberties.\n\n"
     ]
   },
   "recordedGuess": {
@@ -73,6 +83,20 @@
       {
         "model": "microsoft/Phi-3.5-MoE-instruct",
         "distance": 60.447664527276686
+      }
+    ],
+    "llama-3.2-3b-live": [
+      {
+        "model": "meta-llama/Llama-3.2-3B-Instruct",
+        "distance": 16.88742122986067
+      },
+      {
+        "model": "meta-llama/Llama-3.2-1B-Instruct",
+        "distance": 46.65848982778078
+      },
+      {
+        "model": "meta-llama/Meta-Llama-3-70B-Instruct",
+        "distance": 52.35258971609393
       }
     ]
   }
