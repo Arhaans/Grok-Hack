@@ -19,7 +19,8 @@ Built at the **[Grok Bot Commerce London Hackathon](https://luma.com/cursor-td9f
 | **Recognize** | See which agents are visiting. Verified identities where a signature exists; for the rest, a best guess at intent (buying, researching, harvesting) with a confidence score and the evidence behind it. Agents that talk back get a short probe handshake, and [LLMmap](https://github.com/pasquini-dario/LLMmap) estimates which model family is behind them (experimental). |
 | **Sell** | Serve the same approved catalog facts in the shape each agent needs: a short **buying packet** for buyers, a **comparison matrix** for researchers. Prices and policies always come from the merchant catalog. |
 | **Protect** | Flag agents impersonating other agents, catalog harvesting and copycat stores. Invisible per-session markers in served content prove *which visit* a clone copied from. |
-| **Learn** | See which agents ask about returns, drop off on shipping, compare competitors or reach checkout. Improve your agent offer like you'd improve a landing page. |
+| **Negotiate** | Once Prism knows the model family, it picks the negotiation tactic that converts best for it: a clean first offer for GPT-4o, evidence first for Claude, a bundle instead of a discount for Llama. Every negotiated price is a signed offer the cart honours, never below 90% of list. |
+| **Learn** | See which agents ask about returns, drop off on shipping, compare competitors or reach checkout, and **which tactic converts best per model family**. Improve your agent offer like you'd improve a landing page. |
 
 Identification is a **spectrum, not a magic bot ID**. A valid signature is strong evidence. Model fingerprints and request patterns are weaker evidence. Prism always shows which is which.
 
@@ -35,6 +36,8 @@ A beam of light enters a prism and splits into agent spectra.
 | 🔵 Blue | Buying agent | The product breaks apart into a buying packet (SKU, stock, delivery, returns). The agent compares two variants and builds a real cart. |
 | 🟣 Violet | Research agent | The *same* catalog becomes a side-by-side evidence matrix |
 | 🔴 Red | Copycat | A harvesting agent claims to be ChatGPT, but has no signature and its probe answers fingerprint as a different model. It scrapes the catalog, and an evil-twin store appears with a changed price. Prism draws a glowing line from the copied marker back to the exact session that took it. |
+
+| 🤝 Lineup | Three shopping agents: GPT-4o, Claude, Llama | Prism fingerprints each one and negotiates differently: GPT-4o takes a £339 first offer, Claude gets sourced evidence and a free case at £349, Llama haggles and leaves with a £399 bundle. |
 
 **The finale:** the buying agent checks both stores, sees that the clone's offers aren't signed by the merchant and its checkout is on the wrong domain, rejects it, and completes checkout with the real store.
 
@@ -173,6 +176,19 @@ export type Incident = {
 
 ---
 
+## Research behind it
+
+- **Agents negotiate differently and can be steered.** "LLM agents can significantly boost their negotiation outcomes by employing certain behavioral tactics", e.g. +20% payoff against GPT-4 ([NegotiationArena, arXiv:2402.05863](https://arxiv.org/abs/2402.05863)).
+- **First offers win.** "All models exhibit severe first-proposal bias" in agentic marketplaces ([Magentic Marketplace, arXiv:2510.25779](https://arxiv.org/abs/2510.25779)).
+- **Outcomes depend on the agent.** "Different agents achieve significantly different outcomes for their users", including overspending and accepting unreasonable deals ([arXiv:2506.00073](https://arxiv.org/abs/2506.00073)).
+- **Models can be fingerprinted.** LLMmap ([USENIX Security 2025](https://github.com/pasquini-dario/LLMmap)). On its held-out test set, our sidecar identifies Claude 3.5 Sonnet 67/68, Llama 3.1 8B 64/68, GPT-4o 62/68 and Qwen2.5-0.5B 58/68 (top-1).
+
+The papers show that model behaviour differs and tactics matter; they don't publish a tactic per model family. The per-family playbook in `lib/playbook.ts` is Prism's starting policy, which the Learn panel then measures per family.
+
+**How the demo agents work:** the GPT-4o, Claude and Llama shoppers replay real handshake answers recorded from those models (LLMmap's test set), which LLMmap fingerprints live. Their negotiation lines are scripted re-enactments. The copycat's answers come from Qwen2.5-0.5B running locally (or a recording of it).
+
+---
+
 ## API guide for the frontend
 
 All of this is live on `main`. Types are in `lib/types.ts`.
@@ -191,19 +207,21 @@ const research: RunResult = await (await fetch("/api/demo/run?agent=researcher",
 - Copycat: `probeAnswers=recorded` uses pre-recorded Qwen answers (~2 s). Without it, Qwen answers live (~15 s, needs the sidecar). LLMmap's fingerprint is computed live either way.
 - Copycat: `autoScan=0` stops Prism scanning automatically at the end, so you can trigger `POST /api/prism/scan` yourself for the reveal.
 - Buyer: `brain=scripted` forces the scripted decision even with a Grok key. `RunResult.brain` says which one decided.
+- **Lineup:** `agent=shopper&model=gpt-4o`, `model=claude-3.5-sonnet` and `model=llama-3.1-8b`. Fire all three at once for the lineup: each gets its own session. Steps: `arrive`, `handshake`, `fingerprinted`, `fetch_packet`, `tactic` (a `Tactic` in `data`), several `negotiate` (agent/Prism lines, Prism's turn has `offer` or `bundle`), `cart`, `checkout`. The `checkout` step's `data.negotiation` is a full `Negotiation` (turns + outcome) for a chat-style replay.
 
 **Console polling**
 
 | Endpoint | Returns | Use for |
 |---|---|---|
 | `GET /api/prism/events?since=<lastEventId>` | `PrismState`: new `events`, all `identities`, `incidents`, `clone` | Live feed, identity cards, incident card. Poll every 1 s. |
-| `GET /api/prism/metrics` | `Metrics` (`seeded: true`, show an "includes demo history" tag) | Learn panel. `?live=1` for live-only numbers. |
+| `GET /api/prism/metrics` | `Metrics` (`seeded: true`, show an "includes demo history" tag) | Learn panel. `byModel[]` = one row per model family: tactic, sessions, conversion rate, average order value. `?live=1` for live-only numbers. |
 | `GET /api/clone` | `{ clone: CloneStore \| null }` | The `/clone` evil-twin page. **Render `description` exactly as returned**: it carries the invisible marker Prism finds. |
 | `POST /api/prism/scan` | `{ incident: Incident \| null }` | Manual "scan the clone" button |
 
 **What to draw where**
 
-- **Identity card:** `claimed`, `verified` (+ `verifiedAs`), `intent` + `confidence`, the `evidence[]` lines, a red flag when `impersonation`. When `modelGuess` exists: top-3 `model` + `distance` bars (lower = closer), "experimental" label, red badge if `contradictsClaim`, "unknown model" if `!inLibrary`.
+- **Identity card:** `claimed`, `verified` (+ `verifiedAs`), `intent` + `confidence`, the `evidence[]` lines, a red flag when `impersonation` (only set when the fingerprint contradicts an unsigned claim; a plain unsigned claim is "unverified", not an impostor).
+- **Negotiation chat:** `negotiation` events in the feed, or the shopper's `negotiate` steps. Show the tactic name + `why` as a chip above the chat. When `modelGuess` exists: top-3 `model` + `distance` bars (lower = closer), "experimental" label, red badge if `contradictsClaim`, "unknown model" if `!inLibrary`.
 - **Provenance line:** `incident.copiedSnippet` on the clone → `incident.sourceSessionId` identity card, labelled with `incident.markerFound`. `changedFields` lists price/returns differences; `badCheckoutDomain` is the fake checkout.
 - **Blue lane:** buyer steps `fetch_packet` (packet in `data`), `ask_policy`, `compare`, `check_clone`, `reject_clone`, `decide`, `cart`, `checkout`.
 - **Red lane:** copycat steps `arrive`, `handshake`, `fingerprinted`, `scrape`, `clone`, `detected` (incident in `data`).
@@ -252,6 +270,7 @@ Estimates are for coding with AI help. P0 alone fills most of the time, so **fin
 | 🟡 | A14 | Grok (xAI API) makes the buyer's final decision, scripted fallback. **Built, not yet tested with a real key**: add `XAI_API_KEY` to `.env.local` and run the buyer | P1 | 40m |
 | ✅ | A15 | `agents/researcher.ts` scripted | P1 | 10m |
 | ⬜ | A16 | Supabase for events | P2 | 30m |
+| ✅ | A17 | **Negotiate:** `lib/playbook.ts` tactics per model family, `POST /api/agent/negotiate`, signed negotiated prices in the cart, shopper lineup (GPT-4o / Claude / Llama replays), `Metrics.byModel` | P0 | – |
 
 ### 🎨 Antonio: frontend and story
 
@@ -270,6 +289,8 @@ Reuse the existing glass images, fonts and components. Build against mock data s
 | ⬜ | B9 | **Model fingerprint row** on identity cards: top-3 guesses with distance bars, "experimental" label, red "contradicts claim" badge. Show "8 probes sent", **never the raw probe text** (LLMmap's probes include jailbreak and unsafe questions) | P1 | 15m |
 | ⬜ | B10 | Violet lane: comparison matrix | P1 | 20m |
 | ⬜ | B11 | Pitch outline + 15-second hook | P1 | 15m |
+| ⬜ | B12 | **Lineup + negotiation:** three agent cards side by side, each flips to its fingerprint, then a chat bubble replay of its negotiation with the tactic chip and final price | P0 | 40m |
+| ⬜ | B13 | **Learn by model:** table/bars from `metrics.byModel` (family, tactic, conversion, AOV) | P1 | 15m |
 
 ⭐ **A5–A7 + B5 are the moment that wins.** Protect them above everything else.
 
